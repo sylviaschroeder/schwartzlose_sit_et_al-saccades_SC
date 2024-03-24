@@ -95,9 +95,7 @@ explainedVariance = NaN(size(traces,2), length(lamStim), crossFolds);
 predictions = NaN(nPerFold, crossFolds, size(traces,2), length(lamStim));
 
 % get variances explained
-fprintf('  Folds (of %d) to get expl. var. of RF: ', crossFolds)
 for fold = 1:crossFolds
-    fprintf('%d ',fold)
     ind = (1:nPerFold) + (fold-1)*nPerFold;
     ind(ind > size(zTraces,1)) = [];
     j = true(size(zTraces,1),1);
@@ -128,16 +126,13 @@ for fold = 1:crossFolds
             sum((y_test - y_mean) .^2, 1);
     end
 end
-fprintf('\n')
 
 if length(lamStim) > 1 || crossFolds > 1
     % determine RFs using all data and optimal lambdas
     receptiveFields = NaN(size(stim2,2), size(traces,2));
 
     [~, bestStimLams] = max(mean(explainedVariance, 3), [], 2);
-    fprintf('  Optimal lambdas (of %d) to get RFs: ', length(lamStim))
     for lamS = 1:length(lamStim)
-        fprintf('%d ', lamS)
         ind = bestStimLams == lamS & valid;
         if sum(ind) == 0
             continue
@@ -149,7 +144,6 @@ if length(lamStim) > 1 || crossFolds > 1
         receptiveFields(:,ind) = B; % get RF kernel
         predictions(:,:,ind,1) = predictions(:,:,ind,lamS);
     end
-    fprintf('\n')
 else
     receptiveFields = B;
 end
