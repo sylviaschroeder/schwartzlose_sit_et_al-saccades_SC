@@ -1,7 +1,7 @@
 function [receptiveFields, explainedVariance, predictions, time] = ...
     getReceptiveField(traces, traceTimes, ...
     stimFrames, stimTimes, RFtimesInFrames, ...
-    lambdas, crossFolds)
+    lambdas, crossFolds, ignoreFrames)
 
 %GETRECEPTIVEFIELD Returns spatiotemporal receptive field.
 %   [receptiveFields, explainedVariance, predictions, time] = ...
@@ -70,11 +70,15 @@ s(stim > 0) = 0;
 stim2 = [stim2, s];
 stim2 = (stim2 - mean(stim2(:),'omitnan')) ./ std(stim2(:),'omitnan'); % normalise each column of stimulus matrix
 
-% find times when all stimulus frames are NaN, and set neural traces at
-% those times to zero; then set all NaN values in stimulus to zero;
-ind = all(isnan(stim2), 2);
-zTraces(ind,:) = 0;
-stim2(isnan(stim2)) = 0;
+% for stimulus frames that will be ignored, set neural traces and stimulus
+% to zero
+if nargin > 7
+    % find time points to be ignored
+    ind = ismember(time, stimTimes(ignoreFrames));
+    % set traces and stimulus to zero
+    zTraces(ind,:) = 0;
+    stim2(ind,:) = 0;
+end
 
 if isempty(lambdas)
     lamStim = 0;
