@@ -54,7 +54,7 @@ correctWin = 150; % in s, window to fit exponential
                 f(1 : size(traces,1)) + f.a;
         end
 
-        newData.traces = traces;
+        newData.traces = traces; %(traces-mean(traces,1,  'omitnan'))./std(traces, 0, 1, 'omitnan');
         newData.time = t_ca;
         newData.ids = caData.ids;
         newData.planes = caData.planes;

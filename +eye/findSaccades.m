@@ -1,7 +1,7 @@
 function [saccadeIntervals, amplitudes, vel_stat, onsetXY] = ...
     findSaccades(x, y, minDist, scaleThresh, dir, doPlot)
 %FINDSACCADES Detects saccade times and amplitudes.
-%   [saccadeIntervals, amplitudes] = FINDSACCADES(x, y, minDist, ...
+%   [saccadeIntervals, amplitudes,  vel_stat, onsetXY] = FINDSACCADES(x, y, minDist, ...
 %    scaleThresh, doPlot) returns on- and offset times of saccades and
 %    their amplitudes.
 %
@@ -11,6 +11,9 @@ function [saccadeIntervals, amplitudes, vel_stat, onsetXY] = ...
 %   amplitudes          [saccades x 1]; amplitude of each saccade, defined
 %                       as maximum Eucleadian distance between any eye
 %                       positions during the saccade.
+%  vel_stats
+%
+%  onsetXY
 %
 %   x                   [t x 1]; x position of pupil
 %   y                   [t x 1]; y position of pupil
@@ -64,7 +67,7 @@ velocity = sqrt(diffX.^2 + diffY.^2);
 % as threshold
 vel_log = log(velocity);
 vel_log(isinf(vel_log)) = [];
-edges_vel = floor(min(vel_log)*10)/10 : 0.1 : ceil(max(vel_log)*10)/10;
+edges_vel = floor(min(vel_log)*10)/10 : 0.1 : ceil(max(vel_log)*10)/10; % standardise? 
 bins_vel = edges_vel(1:end-1) + 0.05;
 n = histcounts(vel_log, edges_vel);
 n = log(n);
@@ -128,10 +131,6 @@ for am = 1:numel(onsets)
 
 end
 
-switch dir
-    case 'nas'
-        amplitudes = -amplitudes;
-end
 
 if doPlot > 0
     t = 1:length(x);

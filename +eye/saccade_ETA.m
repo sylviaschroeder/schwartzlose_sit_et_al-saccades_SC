@@ -1,4 +1,4 @@
-function  [trial, TA, SE, peak] = saccade_ETA(neuralData, pupilData, onset_T, saccade_matrix, type)
+function  [trial, TA, SE, peak, peak_T] = saccade_ETA(neuralData, pupilData, onset_T, saccade_matrix, type)
 
 switch type
     case 'all'
@@ -11,14 +11,20 @@ switch type
 end
 
 
+
 nN = numel(neuralData.ids);
     resp_edges = [-.5, 1.5];
     for iN = 1:nN
-        t_on = pupilData.time(int16(onset_T(saccade_matrix(:, iN))))';
-        [trial{iN}, TA(:, iN), SE(:, iN), window] = magicETA(neuralData.time, neuralData.traces(:,iN), t_on, [-1 3], [-1 -0.5]);
+        this_neuron = neuralData.z_traces(:, iN);
+        this_neuron(isnan(this_neuron)) = median(this_neuron, 'omitnan');
+        this_saccades = saccade_matrix(:, iN);
+        t_on = pupilData.time(onset_T(this_saccades))';
+        [trial{iN}, TA(:, iN), SE(:, iN), window] = magicETA(neuralData.time, this_neuron, t_on, [-1 2], [-1 -0.5]);
         
         resp_win = window >resp_edges(1) & window <resp_edges(2);
-        peak(iN) = max(TA(resp_win, iN));
+        [~, peak_T(iN)] = max(abs(TA(resp_win, iN)));
+        peak(iN) = TA(peak_T(iN), iN);
+
     end
 
 end
