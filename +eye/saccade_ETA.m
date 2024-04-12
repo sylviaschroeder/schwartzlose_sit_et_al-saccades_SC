@@ -22,7 +22,9 @@ nN = numel(neuralData.ids);
         [trial{iN}, TA(:, iN), SE(:, iN), window] = magicETA(neuralData.time, this_neuron, t_on, [-1 2], [-1 -0.5]);
         
         resp_win = window >resp_edges(1) & window <resp_edges(2);
+        first = find(resp_win>0, 1, 'first');
         [~, peak_T(iN)] = max(abs(TA(resp_win, iN)));
+        peak_T(iN) = peak_T(iN) + first - 1;
         peak(iN) = TA(peak_T(iN), iN);
 
     end

@@ -22,10 +22,10 @@ addpath(genpath(fullfile(folder.codeThis, 'schwartzlose_sit_et_al-saccades_SC'))
 addpath(genpath(fullfile(folder.codeToolboxes, 'FedBox')))
 
 %% Map eye position in pixels to eye position in visual degrees (Sylvia)
-determineEyePosInDegrees(folder);
+% determineEyePosInDegrees(folder);
 
 %% Saccade dynamics (Heather)
 
 
 %% Saccade triggered responses (Federico)
-main_saccade_resp
+main_saccade_resp;

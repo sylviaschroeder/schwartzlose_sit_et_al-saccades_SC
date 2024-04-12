@@ -1,4 +1,4 @@
-function data = getVisNoiseInfo(folder)
+function data = getGrayScreenInfo(folder)
 
 data.stimOrder = readNPY(fullfile(folder, '_ss_sparseNoise._ss_sparseNoiseID.npy'));
 data.times = readNPY(fullfile(folder, '_ss_sparseNoise.times.npy'));
