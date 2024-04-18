@@ -10,19 +10,11 @@ clear;
 % folder.codeThis = 'C:\dev\workspaces';
 
 % folders Federico
-%folder.data = '/Users/federico/Library/CloudStorage/OneDrive-UniversityCollegeLondon/Neural correlates of eye movements/Paper/SC_data';
-%folder.results = '/Users/federico/Library/CloudStorage/OneDrive-UniversityCollegeLondon/Neural correlates of eye movements/Paper/Results';
-%folder.plots = '/Users/federico/Library/CloudStorage/OneDrive-UniversityCollegeLondon/Neural correlates of eye movements/Paper/Plots';
-%folder.codeToolboxes = '/Users/federico/Documents/GitHub';
-%folder.codeThis = '/Users/federico/Documents/GitHub';
-
-%folders Heather
-folder.data = 'C:\Users\User\OneDrive - Fondazione Istituto Italiano Tecnologia\Documenti\SC';
-folder.results = 'D:\SC\Results';
-folder.plots = 'D:\SC\Plots';
-folder.codeToolboxes = 'C:\Users\User\OneDrive - Fondazione Istituto Italiano Tecnologia\Documenti\GitHub';
-folder.codeThis = 'C:\Users\User\OneDrive - Fondazione Istituto Italiano Tecnologia\Documenti\GitHub';
-
+folder.data = '/Users/federico/Library/CloudStorage/OneDrive-UniversityCollegeLondon/Neural correlates of eye movements/Paper/SC_data';
+folder.results = '/Users/federico/Library/CloudStorage/OneDrive-UniversityCollegeLondon/Neural correlates of eye movements/Paper/Results';
+folder.plots = '/Users/federico/Library/CloudStorage/OneDrive-UniversityCollegeLondon/Neural correlates of eye movements/Paper/Plots';
+folder.codeToolboxes = '/Users/federico/Documents/GitHub';
+folder.codeThis = '/Users/federico/Documents/GitHub';
 
 %% Add paths
 addpath(genpath(fullfile(folder.codeToolboxes, 'npy-matlab')))
@@ -33,7 +25,7 @@ addpath(genpath(fullfile(folder.codeToolboxes, 'FedBox')))
 % determineEyePosInDegrees(folder);
 
 %% Saccade dynamics (Heather)
-characterize_saccades;
+
 
 %% Saccade triggered responses (Federico)
 main_saccade_resp;
