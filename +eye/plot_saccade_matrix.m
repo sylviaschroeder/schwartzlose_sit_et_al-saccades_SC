@@ -9,6 +9,5 @@ xlabel('Neuron ID')
 title ('In screen saccades')
 axis image
 formatAxes
-colorbar('Ticks', [-1 0 1], 'TickLabels', {'temp', 'out', 'nas'})
 
 end
