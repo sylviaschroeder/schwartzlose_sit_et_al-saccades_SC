@@ -1,4 +1,4 @@
-function  [trial, TA, SE, peak, peak_T, window] = saccade_ETA(neuralData, pupilData, onset_T, saccade_matrix, type)
+function  [trial, TA, SE, peak, peak_T] = saccade_ETA(neuralData, pupilData, onset_T, saccade_matrix, type)
 
 switch type
     case 'all'
