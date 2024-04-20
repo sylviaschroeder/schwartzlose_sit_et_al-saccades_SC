@@ -69,11 +69,12 @@ for subj = 1:length(subjects)
         squW = diff(noiseData.edges(1:2)) / size(noiseData.frames,3);
         squH = diff(noiseData.edges(3:4)) / size(noiseData.frames,2);
 
+        validPix = size(noiseData.frames, 3);
         if noiseData.edges(1) * noiseData.edges(2) < 0
-            % determine left edge of all pixel columns
+            % determine right edge of all pixel columns
             rightEdges = noiseData.edges(1) + ...
                 (1:size(noiseData.frames,3)) .* squW;
-            validPix = find(rightEdges <= 0);
+            validPix = find(rightEdges <= -60);
             noiseData.frames = noiseData.frames(:,:,validPix);
             noiseData.edges(2) = rightEdges(validPix(end));
         end
@@ -219,7 +220,6 @@ for subj = 1:length(subjects)
             cellID = validRF(iUnit);
             rfGaussConst(cellID,:) = fitPars([1 3:6]);
             xCentres = fitPars(2) + [0 fitPars(7:end)];
-            % xCentres(xCentres<noiseData.edges(1) | xCentres>noiseData.edges(2)) = NaN;
             rfGaussShift(cellID,:) = xCentres;
         end
 
@@ -227,9 +227,9 @@ for subj = 1:length(subjects)
         medianRFpositions = NaN(length(rfData.explVars), 1);
         % perform gaussian fit to determine x-position for old valid RFs
         for cellID = validOld'
-            rf = squeeze(rfData.maps(cellID,:,:,:,:));
+            rf = squeeze(rfData.maps(cellID,:,validPix,:,:));
             [~,mxTime] = max(max(reshape(permute(abs(rf), [1 2 4 3]), ...
-                [], size(RFs,4)), [], 1));
+                [], size(rf,3)), [], 1));
             rf = squeeze(rf(:,:,mxTime,:));
             signs = NaN(1,2);
             subs = NaN(1,3);
@@ -243,8 +243,10 @@ for subj = 1:length(subjects)
             [m, mxSub] = max(subs);
             if subs(3) > 0.7 * m
                 mxSub = 3;
+                rf = rf(:,:,mxSub);
+            else
+                rf = rf(:,:,mxSub) .* signs(mxSub);
             end
-            rf = rf(:,:,mxSub);
 
             % interpolate RF so that pixels are square with edge length of 
             % 1 visual degree
@@ -267,21 +269,28 @@ for subj = 1:length(subjects)
         %% Linear regression
         % linear regression relating pupil position in pixels to RF centre
         % in visual degrees &
-        % determine median horizontal RF positions for newly fitted RFs
-        shifts = rfGaussShift;
+        % determine median horizontal RF positions for newly fitted RFs,
+        % only use units where all of the shifted x-positions are within
+        % stimulus
+        shifts = rfGaussShift; % [units x eyePosBins]
         shifts(shifts < noiseData.edges(1) | shifts > noiseData.edges(2)) = NaN;
         allShiftsValid = find(all(~isnan(shifts), 2));
         medianRFpositions(allShiftsValid) = median(shifts(allShiftsValid,:), 2);
 
+        % fit: rf_xPos_norm = a + b * eye_xPos
+        % rf_xPos_norm is different for each unit and is relative to its median
+        % RF x-position (= rf_xPos - rf_medianXPos);
+        % Vector eye_xPos is the same for each unit
         posNorm = shifts(allShiftsValid,:) - medianRFpositions(allShiftsValid);
         mdl = fitlm(reshape(repmat(eyePosPerBin, length(allShiftsValid), 1), [], 1), ...
             reshape(posNorm, [], 1), "RobustOpts", "on");
         coeffs = mdl.Coefficients.Estimate;
-        
+
         % if some shifted RF positions were outside noise stimulus, use
         % linear model to estimate median RF position based on shifted RF
         % positions inside stimulus: 
-        % y - median_pos = mdl(pupil position)
+        % rf_xPos - rf_medianXPos = a + b * eye_xPos
+        % => rf_medianXPos = rf_xPos - a + b * eye_xPos
         someShiftsValid = setdiff(validRF, allShiftsValid);
         for cellID = someShiftsValid'
             x = shifts(cellID,:);
@@ -291,11 +300,11 @@ for subj = 1:length(subjects)
 
         %% Save results
         % save RF fits
-        folderRes = fullfile(folder.results, 'RFsByEyePos', name, date);
+        folderRes = fullfile(folder.results, name, date);
         if ~isfolder(folderRes)
             mkdir(folderRes);
         end
-        rfMapsShifted = NaN([size(rfData.maps), nb]);
+        rfMapsShifted = NaN([size(rfData.maps,1), size(RFs,2:6)]);
         rfMapsShifted(validRF,:,:,:,:,:) = RFs;
         writeNPY(rfMapsShifted, fullfile(folderRes, 'rfPerEyePos.maps.npy'))
         writeNPY(rfGaussConst, fullfile(folderRes, 'rfPerEyePos.gaussFitPars_fixed.npy'))
@@ -320,11 +329,15 @@ for subj = 1:length(subjects)
         writeNPY(coeffs, fullfile(folderRes, 'eyeToRFPos.regressionCoeffs.npy'))
         
         %% Make plots
-        % plot RF maps and fitted ellipse for each neuron
-        for iUnit = 1:length(validRF)
+        % plot RF maps and fitted ellipse for each neuron with shift
+        for cellID = union(validRF, validOld)' %1:length(validRF)
             % find best subfield (ON or OFF or ON/OFF), find best time of RF
-            cellID = validRF(iUnit);
-            rf = squeeze(mean(RFs(iUnit,:,:,:,:,:),6));
+            if ismember(cellID, validRF)
+                iUnit = find(validRF == cellID);
+                rf = squeeze(mean(RFs(iUnit,:,:,:,:,:),6));
+            else
+                rf = squeeze(rfData.maps(cellID,:,validPix,:,:));
+            end
             [~,mxTime] = max(max(reshape(permute(abs(rf), [1 2 4 3]), ...
                 [], size(RFs,4)), [], 1));
             rf = squeeze(rf(:,:,mxTime,:));
@@ -335,23 +348,66 @@ for subj = 1:length(subjects)
                 [subs(sub),ind] = max(abs(r), [], "all");
                 signs(sub) = sign(r(ind));
             end
-            subs(3) = max(mean(abs(rf),3), [], "all");
+            rf(:,:,3) = (rf(:,:,1).*signs(1) + rf(:,:,2).*signs(2)) ./ 2;
+            subs(3) = max(rf(:,:,3), [], "all");
             [m, mxSub] = max(subs);
             if subs(3) > 0.7 * m
                 mxSub = 3;
             end
 
-            figure('Position', [4 300 1460 420])
-            tiledlayout(2, nb, "TileSpacing", "tight")
-            rf = squeeze(RFs(iUnit,:,:,mxTime,:,:));
-            mx = max(abs(rf(:)));
-            for sub = 1:2
-                for pos = 1:nb
+            if ismember(cellID, validRF)
+                figure('Position', [4 300 1460 420])
+                tiledlayout(2, nb, "TileSpacing", "tight")
+                rf = squeeze(RFs(iUnit,:,:,mxTime,:,:));
+                mx = max(abs(rf(:)));
+                for sub = 1:2
+                    for pos = 1:nb
+                        nexttile
+                        imagesc(...
+                            [noiseData.edges(1)+squW/2 noiseData.edges(2)-squW/2], ...
+                            [noiseData.edges(3)-squH/2 noiseData.edges(4)+squH/2], ...
+                            rf(:,:,sub,pos),[-mx mx])
+                        axis image off
+                        colormap(gca, cms(:,:,sub))
+                        hold on
+                        % ellipse at 2 STD (x and y), not rotated, not shifted
+                        x = rfGaussConst(cellID, 2) * cos(ellipse_x) * 2;
+                        y = rfGaussConst(cellID, 4) * sin(ellipse_x) * 2;
+                        % rotate and shift ellipse
+                        x_rot = rfGaussShift(cellID, pos) + ...
+                            x .* cos(rfGaussConst(cellID, 5)) - ...
+                            y .* sin(rfGaussConst(cellID, 5));
+                        y_rot = rfGaussConst(cellID, 3) + ...
+                            x .* sin(rfGaussConst(cellID, 5)) + ...
+                            y .* cos(rfGaussConst(cellID, 5));
+                        n = x_rot < noiseData.edges(1) | x_rot > noiseData.edges(2);
+                        x_rot(n) = NaN;
+                        y_rot(n) = NaN;
+                        plot(x_rot, y_rot, 'k')
+                        if sub == 1
+                            if pos == 1
+                                title('nasal')
+                            elseif pos == nb
+                                title('temporal')
+                            end
+                        elseif sub == 2 && pos == 1
+                            axis on
+                            set(gca, 'box', 'off')
+                        end
+                    end
+                    colorbar
+                end
+            else
+                figure('Position', [400 300 700 420])
+                tiledlayout(2, 1, "TileSpacing", "tight")
+                rf = squeeze(rfData.maps(cellID,:,validPix,mxTime,:));
+                mx = max(abs(rf(:)));
+                for sub = 1:2
                     nexttile
                     imagesc(...
                         [noiseData.edges(1)+squW/2 noiseData.edges(2)-squW/2], ...
                         [noiseData.edges(3)-squH/2 noiseData.edges(4)+squH/2], ...
-                        rf(:,:,sub,pos),[-mx mx])
+                        rf(:,:,sub),[-mx mx])
                     axis image off
                     colormap(gca, cms(:,:,sub))
                     hold on
@@ -359,28 +415,23 @@ for subj = 1:length(subjects)
                     x = rfGaussConst(cellID, 2) * cos(ellipse_x) * 2;
                     y = rfGaussConst(cellID, 4) * sin(ellipse_x) * 2;
                     % rotate and shift ellipse
-                    x_rot = rfGaussShift(cellID, pos) + ...
+                    x_rot = medianRFpositions(cellID) + ...
                         x .* cos(rfGaussConst(cellID, 5)) - ...
                         y .* sin(rfGaussConst(cellID, 5));
                     y_rot = rfGaussConst(cellID, 3) + ...
                         x .* sin(rfGaussConst(cellID, 5)) + ...
                         y .* cos(rfGaussConst(cellID, 5));
-                    n = x_rot < noiseData.edges(1) | x_rot > noiseData.edges(2);
+                    n = x_rot < noiseData.edges(1) | x_rot > noiseData.edges(2) | ...
+                        y_rot < noiseData.edges(3) | y_rot > noiseData.edges(4);
                     x_rot(n) = NaN;
                     y_rot(n) = NaN;
                     plot(x_rot, y_rot, 'k')
-                    if sub == 1
-                        if pos == 1
-                            title('nasal')
-                        elseif pos == nb
-                            title('temporal')
-                        end
-                    elseif sub == 2 && pos == 1
+                    if sub == 2
                         axis on
                         set(gca, 'box', 'off')
                     end
+                    colorbar
                 end
-                colorbar
             end
             sgtitle(sprintf('Neuron %d (plane %d, ID %d): %s (w/o shift: EV: %.3f, p: %.3f, lam: %.3f)', ...
                 cellID, caData.planes(cellID), caData.ids(cellID), RFtypes{mxSub}, rfData.explVars(cellID), ...
