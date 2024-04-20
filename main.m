@@ -24,7 +24,12 @@ folder.codeThis = 'C:\dev\workspaces';
 % folder.codeToolboxes = 'D:\OneDrive - Fondazione Istituto Italiano Tecnologia\Documents\Code\Stable';
 % folder.codeThis = 'D:\OneDrive - Fondazione Istituto Italiano Tecnologia\Documents\Code\Dev';
 
-
+%folders Heather
+folder.data = 'C:\Users\User\OneDrive - Fondazione Istituto Italiano Tecnologia\Documenti\SC';
+folder.results = 'D:\SC\Results';
+folder.plots = 'D:\SC\Plots';
+folder.codeToolboxes = 'C:\Users\User\OneDrive - Fondazione Istituto Italiano Tecnologia\Documenti\GitHub';
+folder.codeThis = 'C:\Users\User\OneDrive - Fondazione Istituto Italiano Tecnologia\Documenti\GitHub';
 %% Add paths
 addpath(genpath(fullfile(folder.codeToolboxes, 'npy-matlab')))
 addpath(genpath(fullfile(folder.codeThis, 'schwartzlose_sit_et_al-saccades_SC')))
@@ -38,6 +43,6 @@ getRFposFromRetinotopy(folder)
 
 %% Saccade dynamics (Heather)
 
-
+characterize_saccades(folder);
 %% Saccade triggered responses (Federico)
 % main_saccade_resp(folder);
