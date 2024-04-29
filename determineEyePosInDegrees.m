@@ -69,7 +69,7 @@ for subj = 1:length(subjects)
         squW = diff(noiseData.edges(1:2)) / size(noiseData.frames,3);
         squH = diff(noiseData.edges(3:4)) / size(noiseData.frames,2);
 
-        validPix = size(noiseData.frames, 3);
+        validPix = 1:size(noiseData.frames, 3);
         if noiseData.edges(1) * noiseData.edges(2) < 0
             % determine right edge of all pixel columns
             rightEdges = noiseData.edges(1) + ...
