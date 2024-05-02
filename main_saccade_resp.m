@@ -39,7 +39,7 @@ for subj = 4:length(subjects)
         nN = numel(caData.ids);
 
         %% convert eye movements to degrees
-        this_folder  = fullfile(folder.results, 'RFsByEyePos', name, date);
+        this_folder  = fullfile(folder.results, name, date);
         try
             eyeModel = io.getEyeModel(this_folder);
         catch
@@ -56,6 +56,7 @@ for subj = 4:length(subjects)
         %% detect temp and nas saccade with same threshold (done in px
         % space, otherwise the fit changes for degrees cos bin size is
         % hardcoded in function
+        % !!! add code step to clean up eye tracking from artefacts.
 
         [temp_saccade_onoff, temp_amplitudes, temp_vel_stat, temp_onsetXY] = ...
             eye.findSaccades(pupilData.degPosX, pupilData.degPosY, 3, 0.8, 'temp',1);
@@ -81,12 +82,12 @@ for subj = 4:length(subjects)
         onset_deg = pupilData.degPosX(saccade_onoff(:,1));
         amplitude_deg = onset_deg + amplitudes.x'; % think about sign of coefficient
 
-        %% build saccade matrix
+        %% build saccade matrix (currently only taking care of azimuth)
         %         RF_traj_X = pupilData.degPosX + eyeModel.medianRFpos';
-        missingRF = isnan(eyeModel.medianRFpos);
-        eyeModel.medianRFpos(missingRF) = median(eyeModel.medianRFpos(~missingRF), 'omitnan'); %remove when interpolated RF are provided
+        missingRF = isnan(eyeModel.medianRFpos(:,1));
+        eyeModel.medianRFpos(missingRF,1) = median(eyeModel.medianRFpos(~missingRF,1), 'omitnan'); %remove when interpolated RF are provided
         onset_T = saccade_onoff(:,1);
-        onset_RF = onset_deg + eyeModel.medianRFpos'; %nS*nN
+        onset_RF = onset_deg + eyeModel.medianRFpos(:, 1)'; %nS*nN
         endpoint_RF = bsxfun(@plus, onset_RF,  amplitude_deg); %nS*nN
 
         saccade_matrix = zeros(numel(onset_deg), nN); % nSaccades * nN
