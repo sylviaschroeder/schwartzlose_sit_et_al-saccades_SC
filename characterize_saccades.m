@@ -32,20 +32,29 @@ for subj = 1:length(subjects)
         pupilData.pupilSize = pupilData.pupilSize(valid_eye_frames, :);
 
         % convert eye movements to degrees
+        this_folder  = fullfile(folder.results, name, date);
+        try
+            eyeModel = io.getEyeModel(this_folder);
+        catch
+            continue;
+        end
 
-        % extract all saccades, consider only movement on X
+        pupilData.degPosX = pupilData.pos(:,1)*eyeModel.coeff(2) + eyeModel.coeff(1);
+        pupilData.degPosY = (pupilData.pos(:,2)-median(pupilData.pos(:,2), 'omitnan'))*eyeModel.coeff(2);
+
+
+        % extract all saccades
          [saccade_onoff, amplitudes, vel_stat, onsetXY] = ...
-             eye.findSaccades(pupilData.pos(:,1), pupilData.pos(:,2), 3, 1, 'all',0);
+             eye.findSaccades(pupilData.degPosX, pupilData.degPosY, 3, 1, 'all',0);
 
         % detect temp and nas saccades
-
         [temp_saccade_onoff, temp_amplitudes, temp_vel_stat, temp_onsetXY] = ...
-            eye.findSaccades(pupilData.pos(:,1), pupilData.pos(:,2), 3, 0.8, 'temp',1);
+            eye.findSaccades(pupilData.degPosX, pupilData.degPosY, 3, 0.8, 'temp',0);
 
         [nas_saccade_onoff, nas_amplitudes, nas_vel_stat, nas_onsetXY] = ...
-            eye.findSaccades(pupilData.pos(:,1), pupilData.pos(:,2), 3, 1, 'nas',1);
+            eye.findSaccades(pupilData.degPosX, pupilData.degPosY, 3, 1, 'nas',0);
 
-        % combine saccades 
+        % combine saccades
         saccade_onoff = cat(1, temp_saccade_onoff, nas_saccade_onoff);
         onsetXY = cat(1, temp_onsetXY, nas_onsetXY);
         amplitudes.vec = cat(2, temp_amplitudes.vec, nas_amplitudes.vec);
@@ -59,40 +68,56 @@ for subj = 1:length(subjects)
         amplitudes.x = amplitudes.x(sortidx);
         amplitudes.y= amplitudes.y(sortidx);
 
+        % get onsets and amplitude in degrees
+        onset_deg_temp_x = pupilData.degPosX(temp_saccade_onoff(:,1));
+        onset_deg_temp_y = pupilData.degPosY(temp_saccade_onoff(:,2));
+        amplitude_deg_temp_x = onset_deg_temp_x + temp_amplitudes.x';
+        amplitude_deg_temp_y = onset_deg_temp_y + temp_amplitudes.y';
+
+        onset_deg_nas_x = pupilData.degPosX(nas_saccade_onoff(:,1));
+        onset_deg_nas_y = pupilData.degPosY(nas_saccade_onoff(:,2));
+        amplitude_deg_nas_x = onset_deg_nas_x + nas_amplitudes.x';
+        amplitude_deg_nas_y = onset_deg_nas_y + nas_amplitudes.y';
+
+        onset_deg_x = pupilData.degPosX(saccade_onoff(:,1));
+        onset_deg_y = pupilData.degPosY(saccade_onoff(:,2));
+        amplitude_deg_x = onset_deg_x + amplitudes.x';
+        amplitude_deg_y = onset_deg_y + amplitudes.y';
+
         %%characterize saccade physical dynamics
-        x = pupilData.pos(:,1);
-        y = pupilData.pos(:,2);
+        % x = pupilData.pos(:,1);
+        % y = pupilData.pos(:,2);
 
         %binning Y on X: amplitude depending on start position
-        edges = min(onsetXY(:,1)):10:max(onsetXY(:,1));
-        [aveY, aveX, Xbin, stdY] = binYonX(onsetXY(:,1), abs(amplitudes.vec), edges);
+        edges = min(onset_deg_x):5:max(onset_deg_x); %automate edge sizes
+        [aveY, aveX, Xbin, stdY] = binYonX(onset_deg_x, amplitude_deg_x, edges);
         figure
         shadePlot(aveX, aveY, stdY, 'b')
         formatAxes()
         xlabel('start position in x')
-        ylabel('vector amplitude')
+        ylabel('x amplitude')
         print(fullfile(folder.plots, 'Saccade_Characteristics', name, date, sprintf('Amplitude_vs_start_%s_%s', name, date)), '-dpng'); close gcf
 
         %same for nasal vs temporal
-        startnasal = x(nas_saccade_onoff(:,1));
-        startnasal_y = y(nas_saccade_onoff(:,1));
-        starttemp = x(temp_saccade_onoff(:,1));
-        starttemp_y = y(temp_saccade_onoff(:,1));
-        endnasal = x(nas_saccade_onoff(:,2));
-        endnasal_y = y(nas_saccade_onoff(:,2));
-        endtemp = x(temp_saccade_onoff(:,2));
-        endtemp_y = y(temp_saccade_onoff(:,2));
-        edges = min(startnasal):10:max(startnasal);
-        [aveY, aveX, Xbin, stdY] = binYonX(startnasal, abs(nas_amplitudes.vec), edges);
+        startnasal = pupilData.degPosX(nas_saccade_onoff(:,1));
+        startnasal_y = pupilData.degPosY(nas_saccade_onoff(:,1));
+        starttemp = pupilData.degPosX(temp_saccade_onoff(:,1));
+        starttemp_y = pupilData.degPosY(temp_saccade_onoff(:,1));
+        endnasal = pupilData.degPosX(nas_saccade_onoff(:,2));
+        endnasal_y = pupilData.degPosY(nas_saccade_onoff(:,2));
+        endtemp = pupilData.degPosX(temp_saccade_onoff(:,2));
+        endtemp_y = pupilData.degPosY(temp_saccade_onoff(:,2));
+        edges = min(onset_deg_nas_x):5:max(onset_deg_nas_x);
+        [aveY, aveX, Xbin, stdY] = binYonX(onset_deg_nas_x, amplitude_deg_nas_x, edges);
         figure
         shadePlot(aveX, aveY, stdY, 'green')
         hold on
-        edges = min(starttemp):10:max(starttemp);
-        [aveY, aveX, Xbin, stdY] = binYonX(starttemp, temp_amplitudes.vec, edges);
+        edges = min(onset_deg_temp_x):5:max(onset_deg_temp_x);
+        [aveY, aveX, Xbin, stdY] = binYonX(onset_deg_temp_x, amplitude_deg_temp_x, edges);
         shadePlot(aveX, aveY, stdY, 'magenta')
         formatAxes()
         xlabel('start position in x')
-        ylabel('vector amplitude')
+        ylabel('x amplitude')
         print(fullfile(folder.plots, 'Saccade_Characteristics', name, date, sprintf('Amplitude_vs_start_split_%s_%s', name, date)), '-dpng'); close gcf
 
         %findpeaks all
@@ -121,13 +146,16 @@ for subj = 1:length(subjects)
 
         %all eye traces for nasal vs temporal
         etaT = pupilData.time(saccade_onoff(:,1));
-        periT = [-0.2:(1/30):0.4];
-        [ETAmat_eye, ETA_eye, ETAse_eye, window_eye] = magicETA(pupilData.time, x, etaT, periT);
+        sample_rate = 1/30;
+        min_time = -0.2;
+        max_time = 0.4;
+        periT = [min_time:sample_rate:max_time];
+        [ETAmat_eye, ETA_eye, ETAse_eye, window_eye] = magicETA(pupilData.time, pupilData.degPosX, etaT, periT);
         etaT = pupilData.time(temp_saccade_onoff(:,1));
-        [ETAmat_eye_temp, ETA_eye_temp, ETAse_eye_temp, window_eye_temp] = magicETA(pupilData.time, x, etaT, periT);
+        [ETAmat_eye_temp, ETA_eye_temp, ETAse_eye_temp, window_eye_temp] = magicETA(pupilData.time, pupilData.degPosX, etaT, periT);
         ETA_eye_temp_mean = mean(ETA_eye_temp,2,'omitmissing');
         etaT = pupilData.time(nas_saccade_onoff(:,1));
-        [ETAmat_eye_nas, ETA_eye_nas, ETAse_eye_nas, window_eye_nas] = magicETA(pupilData.time, x, etaT, periT);
+        [ETAmat_eye_nas, ETA_eye_nas, ETAse_eye_nas, window_eye_nas] = magicETA(pupilData.time, pupilData.degPosX, etaT, periT);
         ETA_eye_nas_mean = mean(ETA_eye_nas,2,'omitmissing');
         figure
         subplot(2,1,1)
@@ -150,9 +178,9 @@ for subj = 1:length(subjects)
 
         %histogram of amplitudes for nasal vs temporal
         figure
-        histogram(temp_amplitudes.vec, 'Facecolor', 'magenta')
+        histogram(abs(amplitude_deg_nas_x),'Facecolor','green')
         hold on
-        histogram(abs(nas_amplitudes.vec),'Facecolor','green')
+        histogram(abs(amplitude_deg_temp_x), 'Facecolor', 'magenta')
         xlabel('vector amplitude')
         ylabel('frequency')
         formatAxes()
@@ -198,8 +226,8 @@ for subj = 1:length(subjects)
         end
 
         %binning Y on X: peak speed depending on start position
-        edges = min(onsetXY(:,1)):10:max(onsetXY(:,1));
-        [aveY, aveX, Xbin, stdY] = binYonX(onsetXY(:,1), peak_speed', edges);
+        edges = min(onset_deg_x):5:max(onset_deg_x);
+        [aveY, aveX, Xbin, stdY] = binYonX(onset_deg_x, peak_speed', edges);
         figure
         shadePlot(aveX, aveY, stdY, 'b')
         formatAxes()
@@ -211,9 +239,9 @@ for subj = 1:length(subjects)
         %histogram of speeds for nasal vs temporal
         edges = min(peak_speed):2:max(peak_speed);
         figure
-        histogram(temp_peak_speed, edges, 'Facecolor','magenta')
-        hold on
         histogram(nas_peak_speed, edges, 'Facecolor', 'green')
+        hold on
+        histogram(temp_peak_speed, edges, 'Facecolor','magenta')
         xlabel('start position in x')
         ylabel('peak velocity')
         formatAxes()
@@ -226,27 +254,29 @@ for subj = 1:length(subjects)
         speedx_t = temp_peak_speed'.*(cos(temporalangles));
         speedy_t = temp_peak_speed'.*(sin(temporalangles));
 
-        %plot quiver (scaled to reduce overlap) and histogram of start position and velocity
+        %plot quiver (subset to reduce overlap) and histogram of start position and velocity
         figure
         tiledlayout(2,1)
         ax1 = nexttile;
-        quiver(startnasal,startnasal_y,speedx_n/2,speedy_n/2, 'off','g')
+        quiver(onset_deg_nas_x(1:2:end),onset_deg_nas_y(1:2:end),speedx_n(1:2:end),speedy_n(1:2:end), 'off','g')
         hold on
-        quiver(starttemp,starttemp_y,speedx_t/2,speedy_t/2, 'off','m')
+        quiver(onset_deg_temp_x(1:2:end),onset_deg_temp_y(1:2:end),speedx_t(1:2:end),speedy_t(1:2:end), 'off','m')
         xlabel('position in x')
         ylabel('position in y')
-        title('velocity/2')
+        title('velocity')
+        axis square
         formatAxes()
         ax2 = nexttile;
-        edges = min(nas_onsetXY(:,1)):10:max(nas_onsetXY(:,1));
-        [aveY, aveX, Xbin, stdY] = binYonX(nas_onsetXY(:,1), nas_peak_speed', edges);
+        edges = min(onset_deg_nas_x):5:max(onset_deg_nas_x);
+        [aveY, aveX, Xbin, stdY] = binYonX(onset_deg_nas_x, nas_peak_speed', edges);
         shadePlot(aveX, aveY, stdY, 'g')
         hold on
-        edges = min(temp_onsetXY(:,1)):10:max(temp_onsetXY(:,1));
-        [aveY, aveX, Xbin, stdY] = binYonX(temp_onsetXY(:,1), temp_peak_speed', edges);
+        edges = min(onset_deg_temp_x):5:max(onset_deg_temp_x);
+        [aveY, aveX, Xbin, stdY] = binYonX(onset_deg_temp_x, temp_peak_speed', edges);
         shadePlot(aveX, aveY, stdY, 'm')
         xlabel('starting position in x')
         ylabel('peak velocity')
+        axis square
         formatAxes()
         linkaxes([ax1 ax2],'x')
         print(fullfile(folder.plots, 'Saccade_Characteristics', name, date, sprintf('Quiver_velocity_%s_%s', name, date)), '-dpng'); close gcf
@@ -256,23 +286,25 @@ for subj = 1:length(subjects)
         figure
         tiledlayout(2,1)
         ax1 = nexttile;
-        quiver(nas_onsetXY(1:3:end,1),nas_onsetXY(1:3:end,2),nas_amplitudes.x(1:3:end)',nas_amplitudes.y(1:3:end)', 'off','g')
+        quiver(onset_deg_nas_x(1:2:end),onset_deg_nas_y(1:2:end),amplitude_deg_nas_x(1:2:end),amplitude_deg_nas_y(1:2:end), 'off','g')
         hold on
-        quiver(temp_onsetXY(1:3:end,1),temp_onsetXY(1:3:end,2),temp_amplitudes.x(1:3:end)',temp_amplitudes.y(1:3:end)', 'off','m')
+        quiver(onset_deg_temp_x(1:2:end),onset_deg_temp_y(1:2:end),amplitude_deg_temp_x(1:2:end), amplitude_deg_temp_y(1:2:end), 'off','m')
         xlabel('position in x')
         ylabel('position in y')
         title('amplitude')
+        axis square
         formatAxes()
         ax2 = nexttile;
-        edges = min(nas_onsetXY(:,1)):10:max(nas_onsetXY(:,1));
-        [aveY, aveX, Xbin, stdY] = binYonX(nas_onsetXY(:,1), nas_amplitudes.vec, edges);
+        edges = min(onset_deg_nas_x):5:max(onset_deg_nas_x);
+        [aveY, aveX, Xbin, stdY] = binYonX(onset_deg_nas_x, amplitude_deg_nas_x, edges);
         shadePlot(aveX, aveY, stdY, 'g')
         hold on
-        edges = min(temp_onsetXY(:,1)):10:max(temp_onsetXY(:,1));
-        [aveY, aveX, Xbin, stdY] = binYonX(temp_onsetXY(:,1), temp_amplitudes.vec, edges);
+        edges = min(onset_deg_temp_x):5:max(onset_deg_temp_x);
+        [aveY, aveX, Xbin, stdY] = binYonX(onset_deg_temp_x, amplitude_deg_temp_x, edges);
         shadePlot(aveX, aveY, stdY, 'm')
         xlabel('starting position in x')
-        ylabel('amplitude')
+        ylabel('amplitude in x')
+        axis square
         formatAxes()
         linkaxes([ax1 ax2],'x')
         print(fullfile(folder.plots, 'Saccade_Characteristics', name, date, sprintf('Quiver_amplitude_%s_%s', name, date)), '-dpng'); close gcf
@@ -280,9 +312,9 @@ for subj = 1:length(subjects)
 
         %compass plot of saccade endpoints relative to the same origin
         figure
-        compass(temp_amplitudes.x,temp_amplitudes.y,'magenta')
+        compass(amplitude_deg_temp_x,amplitude_deg_temp_y,'magenta')
         hold on
-        compass(nas_amplitudes.x,nas_amplitudes.y,'green')
+        compass(amplitude_deg_nas_x,amplitude_deg_nas_y,'green')
         formatAxes()
         title('x/y displacement')
         print(fullfile(folder.plots, 'Saccade_Characteristics', name, date, sprintf('Compass_%s_%s', name, date)), '-dpng'); close gcf

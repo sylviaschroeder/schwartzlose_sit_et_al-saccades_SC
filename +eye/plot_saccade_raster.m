@@ -20,6 +20,7 @@ this_resp = nas_resp(nas_exc);
 [sorted_nas, order] = sort_psth(this_nas, this_resp);
 [sorted_temp, order] = sort_psth(this_temp, this_resp);
 
+BlueWhiteRed = [0 0 1; 1 1 1; 1 0 0];
 imagesc(sorted_nas'); colormap(BlueWhiteRed);
 caxis(clims)
 ylabel('NA neurons')

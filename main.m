@@ -10,11 +10,11 @@ clear;
 % folder.codeThis = 'C:\dev\workspaces';
 
 % folders Federico Laptop
-folder.data = '/Users/federico/Library/CloudStorage/OneDrive-UniversityCollegeLondon/SC_Saccades_paper/Paper/SC_data';
-folder.results = '/Users/federico/Library/CloudStorage/OneDrive-UniversityCollegeLondon/SC_Saccades_paper/Paper/Results';
-folder.plots = '/Users/federico/Library/CloudStorage/OneDrive-UniversityCollegeLondon/SC_Saccades_paper/Paper/Plots';
-folder.codeToolboxes = '/Users/federico/Documents/GitHub';
-folder.codeThis = '/Users/federico/Documents/GitHub';
+% folder.data = '/Users/federico/Library/CloudStorage/OneDrive-UniversityCollegeLondon/SC_Saccades_paper/Paper/SC_data';
+% folder.results = '/Users/federico/Library/CloudStorage/OneDrive-UniversityCollegeLondon/SC_Saccades_paper/Paper/Results';
+% folder.plots = '/Users/federico/Library/CloudStorage/OneDrive-UniversityCollegeLondon/SC_Saccades_paper/Paper/Plots';
+% folder.codeToolboxes = '/Users/federico/Documents/GitHub';
+% folder.codeThis = '/Users/federico/Documents/GitHub';
 % 
 
 % % folders Federico's WS
@@ -25,11 +25,11 @@ folder.codeThis = '/Users/federico/Documents/GitHub';
 % folder.codeThis = 'D:\OneDrive - Fondazione Istituto Italiano Tecnologia\Documents\Code\Dev';
 
 % %folders Heather
-% folder.data = 'C:\Users\User\OneDrive - Fondazione Istituto Italiano Tecnologia\Documenti\SC';
-% folder.results = 'D:\SC\Results';
-% folder.plots = 'D:\SC\Plots';
-% folder.codeToolboxes = 'C:\Users\User\OneDrive - Fondazione Istituto Italiano Tecnologia\Documenti\GitHub';
-% folder.codeThis = 'C:\Users\User\OneDrive - Fondazione Istituto Italiano Tecnologia\Documenti\GitHub';
+folder.data = 'C:\Users\User\OneDrive - Fondazione Istituto Italiano Tecnologia\Documenti\SC';
+folder.results = 'D:\SC\Results';
+folder.plots = 'D:\SC\Plots';
+folder.codeToolboxes = 'C:\Users\User\OneDrive - Fondazione Istituto Italiano Tecnologia\Documenti\GitHub';
+folder.codeThis = 'C:\Users\User\OneDrive - Fondazione Istituto Italiano Tecnologia\Documenti\GitHub';
 %% Add paths
 addpath(genpath(fullfile(folder.codeToolboxes, 'npy-matlab')))
 addpath(genpath(fullfile(folder.codeThis, 'schwartzlose_sit_et_al-saccades_SC')))
