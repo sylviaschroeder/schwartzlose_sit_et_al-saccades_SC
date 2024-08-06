@@ -20,12 +20,7 @@ this_resp = nas_resp(nas_exc);
 [sorted_nas, order] = sort_psth(this_nas, this_resp);
 [sorted_temp, order] = sort_psth(this_temp, this_resp);
 
-<<<<<<< Updated upstream
-BlueWhiteRed = [0 0 1; 1 1 1; 1 0 0];
-imagesc(sorted_nas'); colormap(BlueWhiteRed);
-=======
-imagesc(trial_window, sum(nas_exc), sorted_nas'); colormap(BlueWhiteRed);
->>>>>>> Stashed changes
+imagesc(trial_window, sum(nas_exc), sorted_nas'); colormap(colmaps.BlueWhiteRed);
 caxis(clims)
 ylabel('NA neurons')
 title('Nas sacc');
@@ -33,7 +28,7 @@ colorbar;
 formatAxes
 
 ax(2) =subplot(4,2,2);
-imagesc(trial_window, sum(nas_exc), sorted_temp'); colormap(BlueWhiteRed);
+imagesc(trial_window, sum(nas_exc), sorted_temp'); colormap(colmaps.BlueWhiteRed);
 caxis(clims)
 title('Temp sacc');
 colorbar;
@@ -47,7 +42,7 @@ this_resp = nas_resp(nas_inh);
 [sorted_nas, order] = sort_psth(this_nas, this_resp);
 [sorted_temp, order] = sort_psth(this_temp, this_resp);
 
-imagesc(trial_window, sum(nas_inh), sorted_nas'); colormap(BlueWhiteRed);
+imagesc(trial_window, sum(nas_inh), sorted_nas'); colormap(colmaps.BlueWhiteRed);
 caxis(clims)
 formatAxes
 ylabel('NS neurons')
@@ -55,7 +50,7 @@ colorbar;
 
 
 ax(4) =subplot(4,2,4);
-imagesc(trial_window, sum(nas_inh),sorted_temp'); colormap(BlueWhiteRed);
+imagesc(trial_window, sum(nas_inh),sorted_temp'); colormap(colmaps.BlueWhiteRed);
 caxis(clims)
 colorbar;
 formatAxes
@@ -68,14 +63,14 @@ this_resp = temp_resp(temp_exc);
 [sorted_nas, order] = sort_psth(this_nas, this_resp);
 [sorted_temp, order] = sort_psth(this_temp, this_resp);
 
-imagesc(trial_window, sum(temp_exc),sorted_nas'); colormap(BlueWhiteRed);
+imagesc(trial_window, sum(temp_exc),sorted_nas'); colormap(colmaps.BlueWhiteRed);
 caxis(clims)
 formatAxes
 ylabel('TA neurons')
 colorbar;
 
 ax(6) =subplot(4,2,6);
-imagesc(trial_window, sum(temp_exc),sorted_temp'); colormap(BlueWhiteRed);
+imagesc(trial_window, sum(temp_exc),sorted_temp'); colormap(colmaps.BlueWhiteRed);
 caxis(clims)
 colorbar;
 formatAxes
@@ -88,7 +83,7 @@ this_resp = temp_resp(temp_inh);
 [sorted_nas, order] = sort_psth(this_nas, this_resp);
 [sorted_temp, order] = sort_psth(this_temp, this_resp);
 
-imagesc(trial_window, sum(temp_inh),sorted_nas'); colormap(BlueWhiteRed);
+imagesc(trial_window, sum(temp_inh),sorted_nas'); colormap(colmaps.BlueWhiteRed);
 caxis(clims)
 formatAxes
 xlabel('Time');
@@ -97,7 +92,7 @@ colorbar;
 
 
 ax(8) =subplot(4,2,8);
-imagesc(trial_window, sum(temp_inh),sorted_temp'); colormap(BlueWhiteRed);
+imagesc(trial_window, sum(temp_inh),sorted_temp'); colormap(colmaps.BlueWhiteRed);
 caxis(clims)
 colorbar;
 formatAxes
