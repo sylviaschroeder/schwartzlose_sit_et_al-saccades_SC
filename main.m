@@ -9,20 +9,28 @@ clear;
 % folder.codeToolboxes = 'C:\dev\toolboxes';
 % folder.codeThis = 'C:\dev\workspaces';
 
+<<<<<<< Updated upstream
 % folders Federico Laptop
+=======
+% % folders Federico Laptop
+>>>>>>> Stashed changes
 % folder.data = '/Users/federico/Library/CloudStorage/OneDrive-UniversityCollegeLondon/SC_Saccades_paper/Paper/SC_data';
 % folder.results = '/Users/federico/Library/CloudStorage/OneDrive-UniversityCollegeLondon/SC_Saccades_paper/Paper/Results';
 % folder.plots = '/Users/federico/Library/CloudStorage/OneDrive-UniversityCollegeLondon/SC_Saccades_paper/Paper/Plots';
 % folder.codeToolboxes = '/Users/federico/Documents/GitHub';
 % folder.codeThis = '/Users/federico/Documents/GitHub';
+<<<<<<< Updated upstream
 % 
+=======
+ 
+>>>>>>> Stashed changes
 
-% % folders Federico's WS
-% folder.data = 'D:\OneDrive - University College London\Neural correlates of eye movements\Paper\SC_data';
-% folder.results = 'D:\OneDrive - University College London\Neural correlates of eye movements\Paper\Results';
-% folder.plots = 'D:\OneDrive - University College London\Neural correlates of eye movements\Paper\Plots';
-% folder.codeToolboxes = 'D:\OneDrive - Fondazione Istituto Italiano Tecnologia\Documents\Code\Stable';
-% folder.codeThis = 'D:\OneDrive - Fondazione Istituto Italiano Tecnologia\Documents\Code\Dev';
+% folders Federico's WS
+folder.data = 'D:\OneDrive - University College London\SC_Saccades_paper\Paper\SC_data';
+folder.results = 'D:\OneDrive - University College London\SC_Saccades_paper\Paper\Results';
+folder.plots = 'D:\OneDrive - University College London\SC_Saccades_paper\Paper\Plots';
+folder.codeToolboxes = 'D:\OneDrive - Fondazione Istituto Italiano Tecnologia\Documents\Code';
+folder.codeThis = 'D:\OneDrive - Fondazione Istituto Italiano Tecnologia\Documents\Code';
 
 % %folders Heather
 folder.data = 'C:\Users\User\OneDrive - Fondazione Istituto Italiano Tecnologia\Documenti\SC';
@@ -45,4 +53,4 @@ getRFposFromRetinotopy(folder)
 
 characterize_saccades(folder);
 %% Saccade triggered responses (Federico)
-main_saccade_resp(folder);
+main_saccade_resp(folder,1);

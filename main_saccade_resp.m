@@ -8,12 +8,12 @@ end
 subjects = dir(fullfile(folder.data, 'SS*'));
 
 %%
-for subj = 4:length(subjects)
+for subj = 1:length(subjects)
     name = subjects(subj).name;
     dates = dir(fullfile(folder.data, name, '2*'));
     for iD = 1:length(dates)
         date = dates(iD).name;
- fprintf('Working on %s %s', name, date);
+ fprintf('Working on %s %s...\n', name, date);
         %% load data
         this_folder = fullfile(folder.data, name, date, '001');
         gsData = io.getGrayScreenInfo(this_folder);
@@ -53,9 +53,10 @@ for subj = 4:length(subjects)
         %         [saccade_onoff, amplitudes, vel_stat, onsetXY] = ...
         %             eye.findSaccades(pupilData.pos(:,1), pupilData.pos(:,2), 3, 1, 'all',1);
 
-        %% detect temp and nas saccade with same threshold (done in px
-        % space, otherwise the fit changes for degrees cos bin size is
-        % hardcoded in function
+        %% detect temp and nas saccade with same threshold (in deg space)
+        % need to fix findSaccades: currently binning for gaussian fit is
+        % done dividing the data intervals in bins - add an argument for
+        % standardisation across datasets
         % !!! add code step to clean up eye tracking from artefacts.
 
         [temp_saccade_onoff, temp_amplitudes, temp_vel_stat, temp_onsetXY] = ...
@@ -78,21 +79,24 @@ for subj = 4:length(subjects)
         amplitudes.x = amplitudes.x(sortidx);
         amplitudes.y= amplitudes.y(sortidx);
 
-        % get onsets and amplitude in degrees
-        onset_deg = pupilData.degPosX(saccade_onoff(:,1));
-        amplitude_deg = onset_deg + amplitudes.x'; % think about sign of coefficient
+        % % get onsets and amplitude in degrees
+        % onset_deg = pupilData.degPosX(saccade_onoff(:,1));
+        % amplitude_deg = onset_deg + amplitudes.x'; % think about sign of coefficient
 
         %% build saccade matrix (currently only taking care of azimuth)
         %         RF_traj_X = pupilData.degPosX + eyeModel.medianRFpos';
-        missingRF = isnan(eyeModel.medianRFpos(:,1));
-        eyeModel.medianRFpos(missingRF,1) = median(eyeModel.medianRFpos(~missingRF,1), 'omitnan'); %remove when interpolated RF are provided
+        % missingRF = isnan(eyeModel.medianRFpos(:,1));
+        % eyeModel.medianRFpos(missingRF,1) = median(eyeModel.medianRFpos(~missingRF,1), 'omitnan'); %remove when interpolated RF are provided
         onset_T = saccade_onoff(:,1);
-        onset_RF = onset_deg + eyeModel.medianRFpos(:, 1)'; %nS*nN
-        endpoint_RF = bsxfun(@plus, onset_RF,  amplitude_deg); %nS*nN
+        nSac = numel(onset_T);
+        startpoint_RF = onsetXY(:,1) + eyeModel.medianRFpos(:, 1)'; %nS*nN
+        endpoint_RF = bsxfun(@plus, startpoint_RF,  amplitudes.x'); 
+        saccade_matrix = zeros(nSac, nN); % nSaccades * nN
 
-        saccade_matrix = zeros(numel(onset_deg), nN); % nSaccades * nN
-        nas_valid = onset_RF> -125 & endpoint_RF < -55 & repmat(amplitude_deg, 1, nN)>0;
-        temp_valid = onset_RF < -55 & endpoint_RF > -125  & repmat(amplitude_deg, 1, nN)<0;
+        % consider valid only saccades which start and end within 7deg
+        % from screen edge
+        nas_valid = startpoint_RF> -128 & endpoint_RF < -52 & repmat(amplitudes.x', 1, nN)>0;
+        temp_valid = startpoint_RF < -52 & endpoint_RF > -128  & repmat(amplitudes.x', 1, nN)<0;
         saccade_matrix(nas_valid) = 1;
         saccade_matrix(temp_valid) = -1;
 
@@ -114,6 +118,9 @@ for subj = 4:length(subjects)
         end
 
         %% saccade triggered averages
+        % the response statistic (max of response within respons window) is computed from the STA,
+        % (equivalent to imposing a common time delay across trials)
+        % Consider computing the median of the statistic from the distribution across trials 
         [trial_nas, TA_nas, SE_nas, peak_nas, nas_peak_T, trial_window] = eye.saccade_ETA(neuralData, pupilData, onset_T, saccade_matrix, 'nas');
         [trial_temp, TA_temp, SE_temp, peak_temp, peak_temp_T] = eye.saccade_ETA(neuralData, pupilData, onset_T, saccade_matrix, 'temp');
 
@@ -162,11 +169,11 @@ fprintf('Complete.\n');
         missing = isnan(peak_temp);
         temp_p(missing) = NaN;
 
-        significant = nas_p<0.01 | temp_p <0.01;
-
-
+        significant = (nas_p<0.01 | temp_p <0.01) & eyeModel.medianRFpos(:, 2)' >-35;
 
         %% if requested, plot and save graphics
+        % we are plotting data only from valid trials (within screen).
+
         if doPlot
          % deal with folders
         fprintf('  %s %s\n', name, date)
@@ -183,7 +190,7 @@ fprintf('Complete.\n');
                 name, date)), '-dpng'); close gcf
             % plot the raster of saccade responses across the population
             figure;
-            eye.plot_saccade_raster(TA_nas, TA_temp, peak_nas, peak_temp);
+            eye.plot_saccade_raster(TA_nas, TA_temp, peak_nas, peak_temp, trial_window);
             print(fullfile(folder.plots, 'Saccade_Responses', name, date, sprintf('All_neurons_STA_%s_%s', ...
                 name, date)), '-dpng'); close gcf
 
@@ -262,33 +269,72 @@ fprintf('Complete.\n');
 
             % plot saccade TA for significant neurons
             figure;
-            eye.plot_saccade_raster(TA_nas(:, significant), TA_temp(:, significant), peak_nas(significant), peak_temp(significant));
+            eye.plot_saccade_raster(TA_nas(:, significant), TA_temp(:, significant), peak_nas(significant), peak_temp(significant), trial_window);
             print(fullfile(folder.plots, 'Saccade_Responses', name, date, sprintf('Significant_neurons_STA_%s_%s', ...
                 name, date)), '-dpng'); close gcf
+
+            % plot RF position of significant neurons
+
+            figure;
+            
+            plot(eyeModel.medianRFpos(:,1), eyeModel.medianRFpos(:, 2), 'o', 'Color', [ 0.2 0.2 0.2]); hold on
+            plot(eyeModel.medianRFpos(significant,1), eyeModel.medianRFpos(significant, 2), 'o', 'Color', [ 1 0.2 0.2]);
+            ylim([-50 50])
+            xlim([-155, -25])
+            plot([-135, -135, -45, -45, -135], [-35, 35, 35, -35, -35], '--');
+            formatAxes;
+            xlabel('Azimuth(deg)')
+            ylabel('Elevation (deg)')
+            print(fullfile(folder.plots, 'Saccade_Responses', name, date, sprintf('Significant_neurons_RFs_%s_%s', ...
+                name, date)), '-dpng'); close gcf
         end
-        % % save results
-        % folderRes = fullfile(folder.results, 'Saccade_Responses', name, date);
-        % if ~isfolder(folderRes)
-        %     mkdir(folderRes);
-        % end
+
+        % save results
+        folderRes = fullfile(folder.results, name, date);
+        if ~isfolder(folderRes)
+            mkdir(folderRes);
+        end
         %
-        % writeNPY(onset_T, fullfile(folderRes, 'SaccadeResponses.onset_T.npy'))
-        % writeNPY(onset_RF, fullfile(folderRes, 'SaccadeResponses.onset_RF.npy'))
-        % writeNPY(endpoint_RF, fullfile(folderRes, 'SaccadeResponses.endpoint_RF.npy'))
-        % writeNPY(saccade_matrix, fullfile(folderRes, 'SaccadeResponses.saccade_matrix.npy'))
+        writeNPY(saccade_onoff, fullfile(folderRes, 'saccadeResponses.intervals.npy')); % nEvents x 2
+
+        writeNPY([amplitudes.x(:), amplitudes.y(:)], fullfile(folderRes, 'saccadeResponses.saccadeAmplitude.npy')); % nEvents x 2
+
+        writeNPY(startpoint_RF, fullfile(folderRes, 'saccadeResponses.startPointRF.npy')); %nEvents x nNeurons
+       
+        writeNPY(endpoint_RF, fullfile(folderRes, 'SaccadeResponses.endPointRF.npy')); %nEvents x nNeurons
+
+        writeNPY(saccade_matrix, fullfile(folderRes, 'SaccadeResponses.saccadeValidMatrix.npy')); %nEvents x nNeurons
+
+        writeNPY(TA_nas, fullfile(folderRes, 'SaccadeResponses.trialNasal.npy')); % trialWindowT x nNeurons
+
+        writeNPY(TA_temp, fullfile(folderRes, 'SaccadeResponses.trialTemporal.npy')); % trialWindowT x nNeurons
+
+        writeNPY(trial_window, fullfile(folderRes, 'SaccadeResponses.trialWindowT.npy')); %nT x 1;
+
+        writeNPY(peak_nas, fullfile(folderRes, 'SaccadeResponses.responseNasal.npy')); % 1x nNeurons
+
+        writeNPY(peak_temp, fullfile(folderRes, 'SaccadeResponses.responseTemporal.npy')) ; % 1x nNeurons
+
+        writeNPY(sh_peak_nas, fullfile(folderRes, 'SaccadeResponses.shuffledResponseNasal.npy'));  % nShuffles x nNeurons
+
+        writeNPY(sh_peak_temp, fullfile(folderRes, 'SaccadeResponses.shuffledResponseTemporal.npy')); % nShuffles x nNeurons
+
+        writeNPY(nas_p, fullfile(folderRes, 'SaccadeResponses.pValNasal.npy')); % 1 x nNeurons
+
+        writeNPY(temp_p, fullfile(folderRes, 'SaccadeResponses.pValTemporal.npy')); % 1 x nNeurons
+
+        % convetion: first letter lowercase, camel notation from the
+        % secondd onwards
+
+        % onset and offsets are saved togetehr as 'interval', nTrials *2
+        %time points of traces are called 'Timestamps'
+
+
         %
-        % writeNPY(trial_nas, fullfile(folderRes, 'SaccadeResponses.trial_nas.npy'))
-        % writeNPY(trial_temp, fullfile(folderRes, 'SaccadeResponses.trial_temp.npy'))
-        % writeNPY(trial_window, fullfile(folderRes, 'SaccadeResponses.trial_window.npy'))
-        %
-        % writeNPY(peak_nas, fullfile(folderRes, 'SaccadeResponses.peak_nas.npy'))
-        % writeNPY(peak_temp, fullfile(folderRes, 'SaccadeResponses.peak_temp.npy'))
-        % writeNPY(sh_peak_nas, fullfile(folderRes, 'SaccadeResponses.sh_peak_nas.npy'))
-        % writeNPY(sh_peak_temp, fullfile(folderRes, 'SaccadeResponses.sh_peak_temp.npy'))
-        % writeNPY(nas_p, fullfile(folderRes, 'SaccadeResponses.nas_p.npy'))
-        % writeNPY(temp_p, fullfile(folderRes, 'SaccadeResponses.temp_p.npy'))
 
     end
 end
+ fprintf('...done \n', name, date);
+
 
 end
