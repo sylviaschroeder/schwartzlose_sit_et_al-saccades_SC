@@ -3,6 +3,10 @@ function main_saccade_resp(folder, doPlot)
 if nargin <2
     doPlot = 1;
 end
+fPlots = fullfile(folder.plots, 'saccadeVelocities');
+if ~isfolder(fPlots)
+    mkdir(fPlots)
+end
 % compute saccade responses and stats
 %%
 subjects = dir(fullfile(folder.data, 'SS*'));
@@ -59,11 +63,17 @@ for subj = 1:length(subjects)
         % standardisation across datasets
         % !!! add code step to clean up eye tracking from artefacts.
 
-        [temp_saccade_onoff, temp_amplitudes, temp_vel_stat, temp_onsetXY] = ...
-            eye.findSaccades(pupilData.degPosX, pupilData.degPosY, 3, 0.8, 'temp',1);
+        [temp_saccade_onoff, temp_amplitudes, ~, temp_onsetXY] = ...
+            eye.findSaccades(pupilData.degPosX, pupilData.degPosY, 3, 2, 'temp',1);
+        saveas(gcf, fullfile(fPlots, sprintf('%s_%s_temporalSaccades.fig', name, date)))
+        saveas(gcf, fullfile(fPlots, sprintf('%s_%s_temporalSaccades.jpg', name, date)))
+        close gcf
 
-        [nas_saccade_onoff, nas_amplitudes, nas_vel_stat, nas_onsetXY] = ...
-            eye.findSaccades(pupilData.degPosX, pupilData.degPosY, 3, 1, 'nas',1);
+        [nas_saccade_onoff, nas_amplitudes, ~, nas_onsetXY] = ...
+            eye.findSaccades(pupilData.degPosX, pupilData.degPosY, 3, 2, 'nas',1);
+        saveas(gcf, fullfile(fPlots, sprintf('%s_%s_nasalSaccades.fig', name, date)))
+        saveas(gcf, fullfile(fPlots, sprintf('%s_%s_nasalSaccades.jpg', name, date)))
+        close gcf
 
         %% combine nas and temp saccades 
         saccade_onoff = cat(1, temp_saccade_onoff, nas_saccade_onoff);
@@ -276,7 +286,7 @@ fprintf('Complete.\n');
             % plot RF position of significant neurons
 
             figure;
-            
+
             plot(eyeModel.medianRFpos(:,1), eyeModel.medianRFpos(:, 2), 'o', 'Color', [ 0.2 0.2 0.2]); hold on
             plot(eyeModel.medianRFpos(significant,1), eyeModel.medianRFpos(significant, 2), 'o', 'Color', [ 1 0.2 0.2]);
             ylim([-50 50])
@@ -299,7 +309,7 @@ fprintf('Complete.\n');
         writeNPY(saccade_onoff, fullfile(folderRes, 'saccadeResponses.intervals.npy')); % nEvents x 2
         % saccade.amplitude
         writeNPY([amplitudes.x(:), amplitudes.y(:)], fullfile(folderRes, 'saccadeResponses.saccadeAmplitude.npy')); % nEvents x 2
-        
+
         % about neurons: [nNeurons x ...]
         % saccadeResponse.RFPosAtStart (you mean the position of the RF at saccade start?)
         writeNPY(startpoint_RF, fullfile(folderRes, 'saccadeResponses.startPointRF.npy')); %nEvents x nNeurons
