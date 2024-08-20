@@ -45,6 +45,10 @@ if nargin < 6
     doPlot = 0;
 end
 
+% get rid of small wiggles and steep "resets" immediately after a saccade
+x = medfilt1(x, 3);
+y = medfilt1(y, 3);
+
 %determine velocity
 diffX = diff(x);
 diffY = diff(y);
@@ -52,33 +56,45 @@ diffY = diff(y);
 switch dir
     case 'all'
     case 'temp'
+        % set positive x-movements (in nasal direction) to zero
         nas_idx = diffX > 0; 
         diffX(nas_idx) = 0; 
         diffY(nas_idx) = 0;
+        str = 'Temporal';
     case 'nas'
+        % set negative x-movements (in nasal direction) to zero
         temp_idx = diffX < 0; 
         diffX(temp_idx) = 0; 
         diffY(temp_idx) = 0;
+        str = 'Nasal';
 end
 
 velocity = sqrt(diffX.^2 + diffY.^2);
 % determine suitable velocity threshold to detect saccades: fit Gaussian to
 % distribution of velocity (on  log-log scale), use x STDs (default: 1)
 % as threshold
-vel_log = log(velocity);
-vel_log(isinf(vel_log)) = [];
-edges_vel = floor(min(vel_log)*10)/10 : 0.1 : ceil(max(vel_log)*10)/10; % standardise? 
-bins_vel = edges_vel(1:end-1) + 0.05;
-n = histcounts(vel_log, edges_vel);
-n = log(n);
-ind = ~isinf(n);
-f = fit(bins_vel(ind)', n(ind)', 'gauss1');
-coeffs = coeffvalues(f);
-thresh_vel = exp(sum(coeffs(2:3))) * scaleThresh; % threshold = mean + STD of velocity distribution (in log-log histogram)
+vel_log = log(velocity(velocity>0));
+
+% NEW CODE TO FIND SACCADE THRESHOLD--------------------------------------
+f = mle(vel_log); % fitting a normal distribution to the distribution of
+                  % logarithmic velocity values
+thresh_vel = exp(f(1) + scaleThresh*f(2));
+% ------------------------------------------------------------------------
+
+% OLD CODE TO FIND SACCADE THRESHOLD--------------------------------------
+% edges_vel = floor(min(vel_log)*10)/10 : 0.1 : ceil(max(vel_log)*10)/10; % standardise? 
+% bins_vel = edges_vel(1:end-1) + 0.05;
+% n = histcounts(vel_log, edges_vel);
+% n = log(n);
+% ind = ~isinf(n);
+% f = fit(bins_vel(ind)', n(ind)', 'gauss1');
+% coeffs = coeffvalues(f);
+% NOTE: 3rd coefficient of gauss1 model is NOT sigma, it is sqrt(2)*sigma
+% thresh_vel = exp(coeffs(2) + coeffs(3)/sqrt(2)) * scaleThresh; % threshold = mean + STD of velocity distribution (in log-log histogram)
+% thresh_vel = exp(sum(coeffs(2:3))) * scaleThresh; % threshold = mean + STD of velocity distribution (in log-log histogram)
+% ------------------------------------------------------------------------
 
 vel_stat.velocity = velocity;
-vel_stat.vel_log_dist = n;
-vel_stat.bins_vel = bins_vel;
 vel_stat.gauss_fit = f;
 
 % detect saccade onsets (with minimum distance of minDist)
@@ -134,7 +150,7 @@ end
 
 if doPlot > 0
     t = 1:length(x);
-    figure;%('Position', [1 41 1920 1083])
+    figure('WindowState', 'maximized')
     ax = zeros(1,3);
     subplot(3,6,1:5) % x-position
     plot(x,'k')
@@ -163,11 +179,14 @@ if doPlot > 0
     xlabel('Time (in samples)')
     
     subplot(3,6,18)
-    plot(bins_vel, n, 'k')
+    histogram(vel_log, 'Normalization', 'pdf')
     hold on
-    plot(f, 'r')
-    plot(log(thresh_vel), f(log(thresh_vel)), 'ro')
-    xlim(edges_vel([1 end]))
-    xlabel('velocity (e^x)')
+    v = min(vel_log):0.01:max(vel_log);
+    plot(v, normpdf(v, f(1), f(2)), 'r')
+    plot([1 1].*log(thresh_vel), ylim, 'r')
+    xlim(v([1 end]))
+    xlabel('log(velocity)')
     legend off
+
+    sgtitle(sprintf('%s saccades', str))
 end
