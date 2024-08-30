@@ -3,7 +3,8 @@ clear;
 
 %% Folder definitions
 % folders Sylvia (please comment out and add your own lines)
-folder.data = 'C:\Users\Sylvia\OneDrive - University of Sussex\Lab\DATA\DataToPublish\arousal_NYP_matlab\sc neurons 2p';
+folder.data = 'C:\Users\Sylvia\University College London\Rossi, Federico - SC_Saccades_paper\Paper\SC_data';
+% folder.data = 'C:\Users\Sylvia\OneDrive - University of Sussex\Lab\DATA\DataToPublish\arousal_NYP_matlab\sc neurons 2p';
 folder.results = 'C:\Users\Sylvia\University College London\Rossi, Federico - SC_Saccades_paper\Paper\Results';
 % folder.results = 'D:\Sacccade Paper\Results';
 folder.plots = 'D:\Results\SacccadePaperPlots';
