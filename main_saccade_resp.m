@@ -9,10 +9,14 @@ if ~isfolder(fPlots)
 end
 % compute saccade responses and stats
 %%
-subjects = dir(fullfile(folder.data, 'SS*'));
+% subjects = dir(fullfile(folder.data, 'SS*'));
+subjects = dir(fullfile(folder.data));
+subjects = subjects(~startsWith({subjects.name},'.'));
 
 %%
-for subj = 1:length(subjects)
+% for subj = 1:length(subjects)
+for subj = [1 9 10]
+
     name = subjects(subj).name;
     dates = dir(fullfile(folder.data, name, '2*'));
     for iD = 1:length(dates)
@@ -45,13 +49,18 @@ for subj = 1:length(subjects)
         %% convert eye movements to degrees
         this_folder  = fullfile(folder.results, name, date);
         try
+            degFlag= 1;
             eyeModel = io.getEyeModel(this_folder);
+            pupilData.degPosX = pupilData.pos(:,1)*eyeModel.coeff(2) + eyeModel.coeff(1);
+            pupilData.degPosY = (pupilData.pos(:,2)-median(pupilData.pos(:,2), 'omitnan'))*eyeModel.coeff(2);
+        
         catch
-            continue;
-        end
+            % continue;
+            degFlag = 0;
+            pupilData.degPosX = pupilData.pos(:,1) -median(pupilData.pos(:,1), 'omitnan');
+            pupilData.degPosY = pupilData.pos(:,2)-median(pupilData.pos(:,2), 'omitnan');
 
-        pupilData.degPosX = pupilData.pos(:,1)*eyeModel.coeff(2) + eyeModel.coeff(1);
-        pupilData.degPosY = (pupilData.pos(:,2)-median(pupilData.pos(:,2), 'omitnan'))*eyeModel.coeff(2);
+        end
 
         % extract saccades, consider only movement on X
         %         [saccade_onoff, amplitudes, vel_stat, onsetXY] = ...
@@ -63,6 +72,9 @@ for subj = 1:length(subjects)
         % standardisation across datasets
         % !!! add code step to clean up eye tracking from artefacts.
 
+        % eye.findSaccades(pupilData.degPosX, pupilData.degPosY, 3, 2, 'all',1);
+        % eye.findSaccades(pupilData.pos(:,1), pupilData.pos(:,2), 3, 2, 'all',1);
+     
         [temp_saccade_onoff, temp_amplitudes, ~, temp_onsetXY] = ...
             eye.findSaccades(pupilData.degPosX, pupilData.degPosY, 3, 2, 'temp',1);
         saveas(gcf, fullfile(fPlots, sprintf('%s_%s_temporalSaccades.fig', name, date)))
@@ -74,7 +86,6 @@ for subj = 1:length(subjects)
         saveas(gcf, fullfile(fPlots, sprintf('%s_%s_nasalSaccades.fig', name, date)))
         saveas(gcf, fullfile(fPlots, sprintf('%s_%s_nasalSaccades.jpg', name, date)))
         close gcf
-
         %% combine nas and temp saccades 
         saccade_onoff = cat(1, temp_saccade_onoff, nas_saccade_onoff);
         onsetXY = cat(1, temp_onsetXY, nas_onsetXY);
@@ -99,16 +110,29 @@ for subj = 1:length(subjects)
         % eyeModel.medianRFpos(missingRF,1) = median(eyeModel.medianRFpos(~missingRF,1), 'omitnan'); %remove when interpolated RF are provided
         onset_T = saccade_onoff(:,1);
         nSac = numel(onset_T);
-        startpoint_RF = onsetXY(:,1) + eyeModel.medianRFpos(:, 1)'; %nS*nN
-        endpoint_RF = bsxfun(@plus, startpoint_RF,  amplitudes.x'); 
-        saccade_matrix = zeros(nSac, nN); % nSaccades * nN
 
-        % consider valid only saccades which start and end within 7deg
-        % from screen edge
-        nas_valid = startpoint_RF> -128 & endpoint_RF < -52 & repmat(amplitudes.x', 1, nN)>0;
-        temp_valid = startpoint_RF < -52 & endpoint_RF > -128  & repmat(amplitudes.x', 1, nN)<0;
-        saccade_matrix(nas_valid) = 1;
-        saccade_matrix(temp_valid) = -1;
+        if degFlag
+
+            startpoint_RF = onsetXY(:,1) + eyeModel.medianRFpos(:, 1)'; %nS*nN
+            endpoint_RF = bsxfun(@plus, startpoint_RF,  amplitudes.x');
+            % consider valid only saccades which start and end within 7deg
+            % from screen edge
+           
+            saccade_matrix = zeros(nSac, nN); % nSaccades * nN
+            nas_valid = startpoint_RF> -128 & endpoint_RF < -52 & repmat(amplitudes.x', 1, nN)>0;
+            temp_valid = startpoint_RF < -52 & endpoint_RF > -128  & repmat(amplitudes.x', 1, nN)<0;
+            saccade_matrix(nas_valid) = 1;
+            saccade_matrix(temp_valid) = -1;
+        else
+            startpoint_RF = onsetXY(:,1); %nS*nN
+            endpoint_RF = bsxfun(@plus, startpoint_RF,  amplitudes.x');
+            saccade_matrix = zeros(nSac, nN); % nSaccades * nN
+             nas_valid = repmat(amplitudes.x', 1, nN)>0;
+            temp_valid = repmat(amplitudes.x', 1, nN)<0;
+            saccade_matrix(nas_valid) = 1;
+            saccade_matrix(temp_valid) = -1;
+
+        end
 
         %% zscore using only moments outside of saccade response window
         dT = median(diff(neuralData.time)); % frame rate
@@ -178,9 +202,12 @@ fprintf('Complete.\n');
         temp_p = min(temp_p_up, temp_p_dw)*2;
         missing = isnan(peak_temp);
         temp_p(missing) = NaN;
-
+if degFlag  % add condition on number of valid trials for significance
         significant = (nas_p<0.01 | temp_p <0.01) & eyeModel.medianRFpos(:, 2)' >-35;
+else
+            significant = (nas_p<0.01 | temp_p <0.01);
 
+end
         %% if requested, plot and save graphics
         % we are plotting data only from valid trials (within screen).
 
@@ -285,6 +312,7 @@ fprintf('Complete.\n');
 
             % plot RF position of significant neurons
 
+            if degFlag
             figure;
 
             plot(eyeModel.medianRFpos(:,1), eyeModel.medianRFpos(:, 2), 'o', 'Color', [ 0.2 0.2 0.2]); hold on
@@ -297,6 +325,7 @@ fprintf('Complete.\n');
             ylabel('Elevation (deg)')
             print(fullfile(folder.plots, 'Saccade_Responses', name, date, sprintf('Significant_neurons_RFs_%s_%s', ...
                 name, date)), '-dpng'); close gcf
+            end
         end
 
         % save results
