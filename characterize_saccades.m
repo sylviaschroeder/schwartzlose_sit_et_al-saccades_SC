@@ -4,7 +4,8 @@ if nargin <2
     doPlot = 1;
 end
 %%
-subjects = dir(fullfile(folder.data, 'SS*'));
+subjects = dir(fullfile(folder.data));
+subjects(1:2) = [];
 %%
 for subj = 1:length(subjects)
     name = subjects(subj).name;
@@ -31,28 +32,42 @@ for subj = 1:length(subjects)
         pupilData.pos = pupilData.pos(valid_eye_frames, :);
         pupilData.pupilSize = pupilData.pupilSize(valid_eye_frames, :);
 
-        % convert eye movements to degrees
-        this_folder  = fullfile(folder.results, name, date);
-        try
-            eyeModel = io.getEyeModel(this_folder);
-        catch
-            continue;
-        end
+        % WHEN IGNORING RECEPTIVE FIELD DATA-------------------------------
+        % % convert eye movements to degrees
+        % this_folder  = fullfile(folder.results, name, date);
+        % try
+        %     eyeModel = io.getEyeModel(this_folder);
+        % catch
+        %     continue;
+        % end
+        
+        % pupilData.degPosX = pupilData.pos(:,1)*eyeModel.coeff(2) + eyeModel.coeff(1);
+        % pupilData.degPosY = (pupilData.pos(:,2)-median(pupilData.pos(:,2), 'omitnan'))*eyeModel.coeff(2);
 
-        pupilData.degPosX = pupilData.pos(:,1)*eyeModel.coeff(2) + eyeModel.coeff(1);
-        pupilData.degPosY = (pupilData.pos(:,2)-median(pupilData.pos(:,2), 'omitnan'))*eyeModel.coeff(2);
+        pupilData.degPosX = pupilData.pos(:,1);
+        pupilData.degPosY = pupilData.pos(:,2);
+        %------------------------------------------------------------------
 
-
-        % extract all saccades
-         [saccade_onoff, amplitudes, vel_stat, onsetXY] = ...
-             eye.findSaccades(pupilData.degPosX, pupilData.degPosY, 3, 1, 'all',0);
+        % % extract all saccades
+        %  [saccade_onoff, amplitudes, vel_stat, onsetXY] = ...
+        %      eye.findSaccades(pupilData.degPosX, pupilData.degPosY, 3, 1, 'all',0);
 
         % detect temp and nas saccades
         [temp_saccade_onoff, temp_amplitudes, temp_vel_stat, temp_onsetXY] = ...
-            eye.findSaccades(pupilData.degPosX, pupilData.degPosY, 3, 0.8, 'temp',0);
+            eye.findSaccades(pupilData.degPosX, pupilData.degPosY, 3, 2, 'temp',1);
+        saveas(gcf, fullfile(folder.plots, 'saccadeVelocities', ...
+            sprintf('%s_%s_temporal.fig', name, date)))
+        saveas(gcf, fullfile(folder.plots, 'saccadeVelocities', ...
+            sprintf('%s_%s_temporal.jpg', name, date)))
+        close gcf
 
         [nas_saccade_onoff, nas_amplitudes, nas_vel_stat, nas_onsetXY] = ...
-            eye.findSaccades(pupilData.degPosX, pupilData.degPosY, 3, 1, 'nas',0);
+            eye.findSaccades(pupilData.degPosX, pupilData.degPosY, 3, 2, 'nas',1);
+        saveas(gcf, fullfile(folder.plots, 'saccadeVelocities', ...
+            sprintf('%s_%s_nasal.fig', name, date)))
+        saveas(gcf, fullfile(folder.plots, 'saccadeVelocities', ...
+            sprintf('%s_%s_nasal.jpg', name, date)))
+        close gcf
 
         % combine saccades
         saccade_onoff = cat(1, temp_saccade_onoff, nas_saccade_onoff);
@@ -328,7 +343,7 @@ for subj = 1:length(subjects)
         formatAxes()
         title('frequency')
         print(fullfile(folder.plots, 'Saccade_Characteristics', name, date, sprintf('Polar_%s_%s', name, date)), '-dpng'); close gcf
-        
+
         %save results
         folderRes = fullfile(folder.results, 'Saccade_Characteristics', name, date);
         if ~isfolder(folderRes)
