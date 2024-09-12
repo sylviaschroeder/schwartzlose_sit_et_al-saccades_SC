@@ -37,6 +37,9 @@ addpath(genpath(fullfile(folder.codeToolboxes, 'npy-matlab')))
 addpath(genpath(fullfile(folder.codeThis, 'schwartzlose_sit_et_al-saccades_SC')))
 addpath(genpath(fullfile(folder.codeToolboxes, 'FedBox')))
 
+%% Map receptive field (for new data) (Sylvia)
+mapReceptiveFields(folder)
+
 %% Map eye position in pixels to eye position in visual degrees (Sylvia)
 determineEyePosInDegrees(folder);
 

@@ -35,7 +35,7 @@ function [receptiveFields, explainedVariance, predictions, time] = ...
 %   crossFolds          ind; number of cross val. folds
 
 % generate toplitz matrix for stimulus
-[stim, time, stimFrames, stimBin] = ...
+[stim, time, stimBin] = ...
     whiteNoise.makeStimToeplitz(stimFrames, stimTimes, RFtimesInFrames);
 
 % get neural response
@@ -53,12 +53,12 @@ stim(ind,:) = [];
 zTraces(ind,:) = [];
 time(ind) = [];
 % if NaN values < 5% in a neuron, exchange NaNs for 0
-ind = any(isnan(zTraces),1) & sum(isnan(zTraces),1)/size(zTraces,1) <= 0.05;
+ind = any(isnan(zTraces),1) & sum(isnan(zTraces),1)/size(zTraces,1) <= 0.1;
 if sum(ind) > 0
     zTraces(:,ind) = fillmissing(zTraces(:,ind),'constant',0);
 end
 % skip neurons that have only NaN values
-valid = ~all(isnan(zTraces),1)';
+valid = ~any(isnan(zTraces),1)';
 
 % duplicate stimulus matrix to predict ON part (1st half) and OFF
 % part (2nd half)
@@ -68,7 +68,8 @@ stim2 = s;
 s = stim;
 s(stim > 0) = 0;
 stim2 = [stim2, s];
-stim2 = (stim2 - mean(stim2(:),'omitnan')) ./ std(stim2(:),'omitnan'); % normalise each column of stimulus matrix
+% normalise each column of stimulus matrix
+stim2 = (stim2 - mean(stim2(:),'omitnan')) ./ std(stim2(:),'omitnan');
 
 % for stimulus frames that will be ignored, set neural traces and stimulus
 % to zero
@@ -84,7 +85,7 @@ if isempty(lambdas)
     lamStim = 0;
     lamMatrix_stim = [];
 else
-    % scale lamdas according to number of samples and number of predictors
+    % scale lambdas according to number of samples and number of predictors
     lamStim = sqrt(lambdas .* size(stim,1) .* size(stim,2));
 
     % construct spatial smoothing lambda matrix
