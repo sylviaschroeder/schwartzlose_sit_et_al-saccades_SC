@@ -1,4 +1,4 @@
-function writeNoiseRFmapResults(results, folder)
+function writeNoiseRFResults(results, folder)
 
 writeNPY(results.maps, fullfile(folder, '_ss_rf.maps.npy'));
 writeNPY(results.explVars, fullfile(folder, '_ss_rf.explVarsStim.npy'));

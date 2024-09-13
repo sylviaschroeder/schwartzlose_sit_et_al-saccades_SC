@@ -1,4 +1,4 @@
-function data = getRFData(folder)
+function data = getNoiseRFData(folder)
 
 data.maps = readNPY(fullfile(folder, '_ss_rf.maps.npy'));
 data.explVars = readNPY(fullfile(folder, '_ss_rf.explVarsStim.npy'));
