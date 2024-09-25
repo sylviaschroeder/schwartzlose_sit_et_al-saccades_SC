@@ -125,17 +125,16 @@ for fold = 1:crossFolds
 
         B = gather(A \ y_train);
         pred = x_test * B; % get prediction
-        predictions(1:length(pred), fold, valid, lamS) = pred;
+        predictions(1:size(pred,1), fold, valid, lamS) = pred;
         explainedVariance(valid, lamS, fold) = 1 - ...
             sum((y_test - pred) .^ 2,1) ./ ...
             sum((y_test - y_mean) .^2, 1);
     end
 end
 
+receptiveFields = NaN(size(stim2,2), size(traces,2));
 if length(lamStim) > 1 || crossFolds > 1
     % determine RFs using all data and optimal lambdas
-    receptiveFields = NaN(size(stim2,2), size(traces,2));
-
     [~, bestStimLams] = max(mean(explainedVariance, 3), [], 2);
     for lamS = 1:length(lamStim)
         ind = bestStimLams == lamS & valid;
@@ -150,7 +149,7 @@ if length(lamStim) > 1 || crossFolds > 1
         predictions(:,:,ind,1) = predictions(:,:,ind,lamS);
     end
 else
-    receptiveFields = B;
+    receptiveFields(:,valid) = B;
 end
 
 receptiveFields = reshape(receptiveFields, size(stimFrames,2), ...

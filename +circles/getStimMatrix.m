@@ -19,14 +19,14 @@ notTested = setdiff(allCombis, unique([xyPos, diameter], 'rows'), 'rows');
 % 3rd dim), and all tested sizes (4th dim); 1: white circle, -1: black
 % circle
 stimMatrix = zeros(length(times), length(x), length(y), length(z));
-% row indices for each time
-r = xyPos(:,1)' == x;
-indR = repmat((1:length(x))', 1, length(times));
-r = indR(r);
 % column indices for each time
-c = xyPos(:,2)' == y;
-indC = repmat((1:length(y))', 1, length(times));
+c = xyPos(:,1)' == x;
+indC = repmat((1:length(x))', 1, length(times));
 c = indC(c);
+% row indices for each time
+r = xyPos(:,2)' == y;
+indR = repmat((1:length(y))', 1, length(times));
+r = indR(r);
 % diameter indices for each time
 d = diameter' == z;
 indD = repmat((1:length(z))', 1, length(times));

@@ -9,8 +9,8 @@ win_correct = 150; % in s, window to fit exponential
 % for receptive field estimates
 % used for fitting 2 RFs (ON and OFF simultaneously), and fitting running
 % kernels and RFs simultaneously
-lambdas = logspace(-4, 0, 5);
-rf_timeLimits = [0.2 0.4];
+lambdas = logspace(-4, -1, 4);
+rf_timeLimits = [0 0.4];
 crossFolds = 10;
 
 % for evaluation of receptive fields (significance/goodness)
@@ -33,13 +33,14 @@ for subj = 1:length(subjects)
     dates = dir(fullfile(folder.data, name, '2*'));
     for dt = 1:length(dates)
         date = dates(dt).name;
+        fprintf('  %s %s\n', name, date)
         f = fullfile(folder.data, name, date, '001');
 
         % ignore datasets for which receptive fields were already fit, and
         % datasets for which white noise or circle data do not exist
         if isfile(fullfile(f, "_ss_rf.pValues.npy")) || ...
-                ~isfile(fullfile(f, "_ss_sparseNoise.times.npy")) || ...
-                ~isfile(fullfile(f, "_ss_circles.intervals.npy"))
+                (~isfile(fullfile(f, "_ss_sparseNoise.times.npy")) && ...
+                ~isfile(fullfile(f, "_ss_circles.intervals.npy")))
             continue
         end
 
@@ -164,9 +165,9 @@ for subj = 1:length(subjects)
         end
 
         %% Plot RFs
-        fPlot = fullfile(folder.plots, 'RFs', name, date);
-        if ~isfolder(fPlot)
-            mkdir(fPlot)
+        fPlots = fullfile(folder.plots, 'RFs', name, date);
+        if ~isfolder(fPlots)
+            mkdir(fPlots)
         end
         if isfile(fullfile(f, "_ss_sparseNoise.times.npy"))
             results = io.getNoiseRFData(f);
