@@ -9,13 +9,13 @@ if ~isfolder(fPlots)
 end
 % compute saccade responses and stats
 %%
-% subjects = dir(fullfile(folder.data, 'SS*'));
-subjects = dir(fullfile(folder.data));
+subjects = dir(fullfile(folder.data, 'SS*'));
+% subjects = dir(fullfile(folder.data));
 subjects = subjects(~startsWith({subjects.name},'.'));
 
 %%
-% for subj = 1:length(subjects)
-for subj = [1 9 10]
+for subj = 1:length(subjects)
+% for subj = [1 9 10]
 
     name = subjects(subj).name;
     dates = dir(fullfile(folder.data, name, '2*'));
@@ -341,31 +341,31 @@ end
 
         % about neurons: [nNeurons x ...]
         % saccadeResponse.RFPosAtStart (you mean the position of the RF at saccade start?)
-        writeNPY(startpoint_RF, fullfile(folderRes, 'saccadeResponses.startPointRF.npy')); %nEvents x nNeurons
+        writeNPY(startpoint_RF, fullfile(folderRes, 'saccadeResponse.RFPosAtStart.npy')); %nEvents x nNeurons
         % saccadeResponse.RFPosAtEnd
-        writeNPY(endpoint_RF, fullfile(folderRes, 'SaccadeResponses.endPointRF.npy')); %nEvents x nNeurons
+        writeNPY(endpoint_RF, fullfile(folderRes, 'saccadeResponse.RFPosAtEnd.npy')); %nEvents x nNeurons
         % saccadeResponse.valid
-        writeNPY(saccade_matrix, fullfile(folderRes, 'SaccadeResponses.saccadeValidMatrix.npy')); %nEvents x nNeurons
+        writeNPY(saccade_matrix, fullfile(folderRes, 'saccadeResponse.valid.npy')); %nEvents x nNeurons
         % saccadeResponse.peakNasal
-        writeNPY(peak_nas, fullfile(folderRes, 'SaccadeResponses.responseNasal.npy')); % 1x nNeurons
+        writeNPY(peak_nas, fullfile(folderRes, 'saccadeResponse.peakNasal.npy')); % 1x nNeurons
         % saccadeResponse.peakTemporal
-        writeNPY(peak_temp, fullfile(folderRes, 'SaccadeResponses.responseTemporal.npy')) ; % 1x nNeurons
+        writeNPY(peak_temp, fullfile(folderRes, 'saccadeResponse.peakTemporal.npy')) ; % 1x nNeurons
         % saccadeResponse.peakNasalShuffled
-        writeNPY(sh_peak_nas, fullfile(folderRes, 'SaccadeResponses.shuffledResponseNasal.npy'));  % nShuffles x nNeurons
+        writeNPY(sh_peak_nas, fullfile(folderRes, 'saccadeResponse.peakNasalShuffled.npy'));  % nShuffles x nNeurons
         % saccadeResponse.peakTemporalShuffled
-        writeNPY(sh_peak_temp, fullfile(folderRes, 'SaccadeResponses.shuffledResponseTemporal.npy')); % nShuffles x nNeurons
+        writeNPY(sh_peak_temp, fullfile(folderRes, 'saccadeResponse.peakTemporalShuffled.npy')); % nShuffles x nNeurons
         % saccadeResponse.pValueNasal
-        writeNPY(nas_p, fullfile(folderRes, 'SaccadeResponses.pValNasal.npy')); % 1 x nNeurons
+        writeNPY(nas_p, fullfile(folderRes, 'saccadeResponse.pValueNasal.npy')); % 1 x nNeurons
         % saccadeResponse.pValueTemporal
-        writeNPY(temp_p, fullfile(folderRes, 'SaccadeResponses.pValTemporal.npy')); % 1 x nNeurons
+        writeNPY(temp_p, fullfile(folderRes, 'saccadeResponse.pValueTemporal.npy')); % 1 x nNeurons
 
         % about saccade response ETA/kernel: [t x ...]
         % saccadeETA.nasal
-        writeNPY(TA_nas, fullfile(folderRes, 'SaccadeResponses.trialNasal.npy')); % trialWindowT x nNeurons
+        writeNPY(TA_nas, fullfile(folderRes, 'saccadeETA.nasal.npy')); % trialWindowT x nNeurons
         % saccadeETA.temporal
-        writeNPY(TA_temp, fullfile(folderRes, 'SaccadeResponses.trialTemporal.npy')); % trialWindowT x nNeurons
+        writeNPY(TA_temp, fullfile(folderRes, 'saccadeETA.temporal.npy')); % trialWindowT x nNeurons
         % saccadeETA.timestamps
-        writeNPY(trial_window, fullfile(folderRes, 'SaccadeResponses.trialWindowT.npy')); %nT x 1;
+        writeNPY(trial_window, fullfile(folderRes, 'saccadeETA.timestamps.npy')); %nT x 1;
 
         % convetion: first letter lowercase, camel notation from the
         % secondd onwards
