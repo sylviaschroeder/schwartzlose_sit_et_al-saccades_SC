@@ -18,7 +18,7 @@ notTested = setdiff(allCombis, unique([xyPos, diameter], 'rows'), 'rows');
 % for each time point (1st dim), make grid of all tested positions (2nd + 
 % 3rd dim), and all tested sizes (4th dim); 1: white circle, -1: black
 % circle
-stimMatrix = zeros(length(times), length(x), length(y), length(z));
+stimMatrix = zeros(length(times), length(y), length(x), length(z));
 % column indices for each time
 c = xyPos(:,1)' == x;
 indC = repmat((1:length(x))', 1, length(times));
@@ -37,5 +37,5 @@ stimMatrix(ind(isWhite == 1)) = 1;
 stimMatrix(ind(isWhite ~= 1)) = -1;
 
 for j = 1:size(notTested,1)
-    stimMatrix(:,notTested(1),notTested(2),notTested(3)) = NaN;
+    stimMatrix(:,notTested(2),notTested(1),notTested(3)) = NaN;
 end

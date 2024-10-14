@@ -47,12 +47,12 @@ ind = all(isnan(zTraces),2);
 stim(ind,:) = [];
 zTraces(ind,:) = [];
 % if NaN values < 5% in a neuron, exchange NaNs for 0
-ind = any(isnan(zTraces),1) & sum(isnan(zTraces),1)/size(zTraces,1) <= 0.05;
+ind = any(isnan(zTraces),1) & sum(isnan(zTraces),1)/size(zTraces,1) <= 0.1;
 if sum(ind) > 0
     zTraces(:,ind) = fillmissing(zTraces(:,ind),'constant',0);
 end
 % skip neurons that have only NaN values
-valid = ~all(isnan(zTraces),1)';
+valid = ~any(isnan(zTraces),1)';
 
 % duplicate stimulus matrix to predict ON part (1st half) and OFF part (2nd half)
 s = stim;

@@ -52,15 +52,21 @@ lamMatrix_stim = krnl.makeLambdaMatrix(stimSize, [1 1 1 1]);
 % duplicate to cover white and black circles
 lamMatrix_stim = blkdiag(lamMatrix_stim, lamMatrix_stim);
 
+% for cross-validation, choose every n-th sample for one "fold" (where n is
+% number of folds); don't choose chunks of successive samples
 nPerFold = ceil(size(stim,1) / crossFolds);
+indPerFold = reshape(1:(crossFolds*nPerFold), crossFolds, [])';
+indPerFold(indPerFold > size(stim,1)) = NaN;
 
 explainedVariance = NaN(size(caTraces,2), length(lamStim), crossFolds);
 preds = NaN(nPerFold, crossFolds, size(caTraces,2), length(lamStim));
 
 % get variances explained
 for fold = 1:crossFolds
-    ind = (1:nPerFold) + (fold-1)*nPerFold;
-    ind(ind > size(zTraces,1)) = [];
+    % ind = (1:nPerFold) + (fold-1)*nPerFold;
+    % ind(ind > size(zTraces,1)) = [];
+    ind = indPerFold(:,fold);
+    ind(isnan(ind)) = [];
     j = true(size(zTraces,1),1);
     j(ind) = false;
     

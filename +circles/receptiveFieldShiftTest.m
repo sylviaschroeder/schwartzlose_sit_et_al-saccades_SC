@@ -46,11 +46,11 @@ zTraces = (caTraces - mean(caTraces,1,"omitnan")) ./ ...
 validTimes = ~all(isnan(zTraces),2);
 toeplitz(~validTimes,:) = [];
 zTraces(~validTimes,:) = [];
-ind = any(isnan(zTraces),1) & sum(isnan(zTraces),1)/size(zTraces,1) <= 0.05;
+ind = any(isnan(zTraces),1) & sum(isnan(zTraces),1)/size(zTraces,1) <= 0.1;
 if sum(ind) > 0
     zTraces(:,ind) = fillmissing(zTraces(:,ind),'constant',0);
 end
-validUnits = ~all(isnan(zTraces),1)';
+validUnits = ~any(isnan(zTraces),1)';
 
 % duplicate stimulus matrix to predict ON part (1st half) and OFF part 
 % (2nd half)
@@ -79,28 +79,39 @@ explainedVariance_shifted = NaN(size(caTraces,2), numShifts);
 
 lamValues = unique(lamStim);
 shifts = randi(size(zTraces,1), numShifts, 1);
-shiftedTraces = NaN(size(zTraces,1), numShifts, size(zTraces,2));
-for sh = 1:numShifts
-    shiftedTraces(:,sh,:) = circshift(zTraces, shifts(sh), 1);
-end
-for lam = 1:length(lamValues)
-    indNeurons = find((lamStim == lamValues(lam)) & validUnits);
-    if isempty(indNeurons)
-        continue
+
+% Make sure to keep size of shiftTraces to <1 bill. elements
+batches = ceil(size(zTraces,1) * numShifts * size(zTraces,2) / 1000000000);
+batchSize = ceil(size(zTraces,2) / batches);
+for b = 1:batches
+    indBatch = (1:batchSize) + (b-1)*batchSize;
+    indBatch(indBatch > size(zTraces,2)) = [];
+    shiftedTraces = NaN(size(zTraces,1), numShifts, length(indBatch));
+    for sh = 1:numShifts
+        shiftedTraces(:,sh,:) = circshift(zTraces(:,indBatch), shifts(sh), 1);
     end
-    lms = lamMatrix_stim .* lamValues(lam);
-    A = gpuArray([stim; lms]);
-    
-    pred = stim * receptiveFields(:,indNeurons);
-    explainedVariance(indNeurons) = 1 - ...
-        sum((zTraces(:, indNeurons) - pred) .^ 2,1) ./ ...
-        sum((zTraces(:, indNeurons) - mean(zTraces(:, indNeurons),1)) .^ 2,1);
-    
-    for iCell = 1:length(indNeurons)
-        tr = shiftedTraces(:,:,indNeurons(iCell));
-        B = gather(A \ gpuArray(padarray(tr, size(lms,1), 'post'))); 
-        pred = stim * B;
-        explainedVariance_shifted(indNeurons(iCell), :) = 1 - ...
-            sum((tr - pred) .^ 2,1) ./ sum((tr - mean(tr,1)) .^ 2,1);
+    for lam = 1:length(lamValues)
+        indNeurons = find((lamStim(indBatch) == lamValues(lam)) & ...
+            validUnits(indBatch));
+        if isempty(indNeurons)
+            continue
+        end
+        lms = lamMatrix_stim .* lamValues(lam);
+        A = gpuArray([stim; lms]);
+
+        pred = stim * receptiveFields(:, indBatch(indNeurons));
+        explainedVariance(indBatch(indNeurons)) = 1 - ...
+            sum((zTraces(:, indBatch(indNeurons)) - pred) .^ 2,1) ./ ...
+            sum((zTraces(:, indBatch(indNeurons)) - ...
+            mean(zTraces(:, indBatch(indNeurons)),1)) .^ 2,1);
+
+        for iCell = 1:length(indNeurons)
+            tr = shiftedTraces(:,:,indNeurons(iCell));
+            B = gather(A \ gpuArray(padarray(tr, size(lms,1), 'post')));
+            pred = stim * B;
+            explainedVariance_shifted(indBatch(indNeurons(iCell)), :) = ...
+                1 - ...
+                sum((tr - pred) .^ 2,1) ./ sum((tr - mean(tr,1)) .^ 2,1);
+        end
     end
 end

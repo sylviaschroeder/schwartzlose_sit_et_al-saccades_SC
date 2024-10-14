@@ -16,7 +16,7 @@ newTraces = NaN(length(newTime), size(traces,2));
 for d = 1:length(delays)
     indUnits = find(delayIDs == d);
     for n = indUnits'
-        if all(isnan(traces(:,n)))
+        if sum(isnan(traces(:,n)))/size(traces,1) > 0.8
             continue
         end
         nanInd1 = isnan(traces(:,n));

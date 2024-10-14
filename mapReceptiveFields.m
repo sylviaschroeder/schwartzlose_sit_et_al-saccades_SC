@@ -10,11 +10,12 @@ win_correct = 150; % in s, window to fit exponential
 % used for fitting 2 RFs (ON and OFF simultaneously), and fitting running
 % kernels and RFs simultaneously
 lambdas = logspace(-4, -1, 4);
-rf_timeLimits = [0 0.4];
+rf_timeLimits = [0.2 0.4];
 crossFolds = 10;
 
 % for evaluation of receptive fields (significance/goodness)
-minExplainedVariance = 0.01;
+minExplainedVariance_noise = 0.07;
+minExplainedVariance_circles = 0.01;
 maxPVal = 0.05;
 % for plotting RFs
 [cm_ON, cm_OFF] = colmaps.getRFMaps;
@@ -173,7 +174,7 @@ for subj = 1:length(subjects)
             results = io.getNoiseRFData(f);
             for iUnit = 1:length(results.explVars)
                 if isnan(results.explVars(iUnit)) || ...
-                        results.explVars(iUnit) < minExplainedVariance || ...
+                        results.explVars(iUnit) < minExplainedVariance_noise || ...
                         results.pValues(iUnit) > maxPVal
                     continue
                 end
@@ -211,7 +212,7 @@ for subj = 1:length(subjects)
             results = io.getCircleRFData(f);
             for iUnit = 1:length(results.explVars)
                 if isnan(results.explVars(iUnit)) || ...
-                        results.explVars(iUnit) < minExplainedVariance || ...
+                        results.explVars(iUnit) < minExplainedVariance_circles || ...
                         results.pValues(iUnit) > maxPVal
                     continue
                 end

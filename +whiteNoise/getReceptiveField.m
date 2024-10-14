@@ -34,7 +34,7 @@ function [receptiveFields, explainedVariance, predictions, time] = ...
 %   lambdas             [1 x lambda]; values of lambda
 %   crossFolds          ind; number of cross val. folds
 
-% generate toplitz matrix for stimulus
+% generate toeplitz matrix for stimulus
 [stim, time, stimBin] = ...
     whiteNoise.makeStimToeplitz(stimFrames, stimTimes, RFtimesInFrames);
 
@@ -94,15 +94,21 @@ else
     lamMatrix_stim = blkdiag(lamMatrix_stim, lamMatrix_stim);
 end
 
+% for cross-validation, choose every n-th sample for one "fold" (where n is
+% number of folds); don't choose chunks of successive samples
 nPerFold = ceil(size(stim,1) / crossFolds);
+indPerFold = reshape(1:(crossFolds*nPerFold), crossFolds, [])';
+indPerFold(indPerFold > size(stim,1)) = NaN;
 
 explainedVariance = NaN(size(traces,2), length(lamStim), crossFolds);
 predictions = NaN(nPerFold, crossFolds, size(traces,2), length(lamStim));
 
 % get variances explained
 for fold = 1:crossFolds
-    ind = (1:nPerFold) + (fold-1)*nPerFold;
-    ind(ind > size(zTraces,1)) = [];
+    % ind = (1:nPerFold) + (fold-1)*nPerFold;
+    % ind(ind > size(zTraces,1)) = [];
+    ind = indPerFold(:,fold);
+    ind(isnan(ind)) = [];
     j = true(size(zTraces,1),1);
     j(ind) = false;
     
