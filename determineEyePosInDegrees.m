@@ -79,7 +79,7 @@ for subj = 1:length(subjects)
             gridW = diff(edges(1:2)) / size(stimData.frames,3);
             gridH = -diff(edges(3:4)) / size(stimData.frames,2);
             validPix = 1:size(rfData.maps, 3);
-            if edges(1) * edges(2) < 0
+            if stimData.edges(1) * stimData.edges(2) < 0
                 stimData.frames = stimData.frames(:,:,validPix);
             end
 
