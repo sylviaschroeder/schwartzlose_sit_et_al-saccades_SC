@@ -15,8 +15,9 @@ function [x, fitResp] = fit2dGaussRF(rf, makeplots)
     x0 = [1, maxX, mean(diff(xcoords))*5, maxY, mean(diff(ycoords))*5, 0];
     
     lb = [0, min(xcoords), 0, min(ycoords), 0, -pi/4];
-    ub = [2 * max(rf(:)), max(xcoords), (max(xcoords))^2, ...
-        max(ycoords), (max(ycoords))^2, pi/4];
+    mx_std = max(range(xcoords(:)), range(ycoords(:))) / 4;
+    ub = [2 * max(rf(:)), max(xcoords), mx_std, ...
+        max(ycoords), mx_std, pi/4];
     options = optimoptions('lsqcurvefit', 'Display', 'off');
     x = lsqcurvefit(@whiteNoise.D2GaussFunctionRot, x0, xdata, ...
         rf, lb, ub, options);

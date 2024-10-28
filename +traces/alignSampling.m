@@ -5,6 +5,7 @@ timeBin = median(diff(time));
 
 if length(delays) <= 1
     newTraces = traces;
+    newTime = time;
     return
 end
 

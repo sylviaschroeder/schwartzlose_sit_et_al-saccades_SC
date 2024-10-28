@@ -3,7 +3,7 @@ function F = D2GaussFunctionRot_wShift(x, xdata)
 
 % x and y vetors (spanning the space) are rotated into opposite direction,
 % which results in the final ellipse being rotated in the given direction
-rotation = -x(6);
+rotation = x(6);
 
 xdatarot(:,:,1)= xdata(:,:,1)*cos(rotation) - xdata(:,:,2)*sin(rotation);
 xdatarot(:,:,2)= xdata(:,:,1)*sin(rotation) + xdata(:,:,2)*cos(rotation);

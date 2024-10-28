@@ -1,6 +1,6 @@
 function [explainedVariance, explainedVariance_shifted] = ...
-    receptiveFieldShiftTest(traces, traceTimes, ...
-    stimFrames, stimTimes, RFtimesInFrames, ...
+    receptiveFieldShiftTest(caTraces, t_ca, ...
+    toeplitz, t_toeplitz, stimSize, rfBins, ...
     receptiveFields, lambdas, numShifts)
 
 %RECEPTIVEFIELDSHIFTTEST Test significance of receptive field fit.
@@ -30,80 +30,55 @@ function [explainedVariance, explainedVariance_shifted] = ...
 %   numShifts           int; number of shifts to generate null
 %                       distributions
 
-% generate toplitz matrix for stimulus
-[stim, time, stimBin] = ...
-    whiteNoise.makeStimToeplitz(stimFrames, stimTimes, RFtimesInFrames);
-
-% get neural response
-traceBin = median(diff(traceTimes));
-numBins = round(stimBin / traceBin);
-traces = smoothdata(traces, 1, 'movmean', numBins, 'omitnan');
-traces = interp1(traceTimes, traces, time);
-% z-score neural response
-zTraces = (traces - mean(traces,1,'omitnan')) ./ std(traces,0,1,'omitnan');
-
-% delete stim frames for which all neurons have NaN
-ind = all(isnan(zTraces),2);
-stim(ind,:) = [];
-zTraces(ind,:) = [];
-% if NaN values < 5% in a neuron, exchange NaNs for 0
-ind = any(isnan(zTraces),1) & sum(isnan(zTraces),1)/size(zTraces,1) <= 0.1;
-if sum(ind) > 0
-    zTraces(:,ind) = fillmissing(zTraces(:,ind),'constant',0);
-end
-% skip neurons that have only NaN values
-valid = ~any(isnan(zTraces),1)';
-
-% duplicate stimulus matrix to predict ON part (1st half) and OFF part (2nd half)
-s = stim;
-s(stim < 0) = 0;
-stim2 = s;
-s = stim;
-s(stim > 0) = 0;
-stim2 = [stim2, s];
-% normalise each column of stimulus matrix
-stim2 = (stim2 - mean(stim2(:),'omitnan')) ./ std(stim2(:),'omitnan');
-clear s
-
-% scale lambdas according to number of samples and number of predictors
-lamStim = sqrt(lambdas .* size(stim,1) .* size(stim,2));
-
-% construct spatial smoothing lambda matrix
-lamMatrix_stim = krnl.makeLambdaMatrix([size(stimFrames,2), size(stimFrames,3), ...
-    length(RFtimesInFrames)], [1 1 0]);
-lamMatrix_stim = blkdiag(lamMatrix_stim, lamMatrix_stim);
+ignoreStimTimes = false(size(t_toeplitz));
+[zTraces, stim, ~, validUnits, ~, ...
+    lamStim, lamMatrix_stim] = ...
+    whiteNoise.prepareDataForRFFit(caTraces, t_ca, toeplitz, t_toeplitz, ...
+    stimSize, rfBins, lambdas, ignoreStimTimes);
 
 % reshape receptive fields
-receptiveFields = reshape(receptiveFields, [], size(receptiveFields, 5));
+receptiveFields = reshape(receptiveFields, [], ...
+    size(receptiveFields, ndims(receptiveFields)));
 
 % get explained variances on original and shifted data
-explainedVariance = NaN(size(traces,2), 1);
-explainedVariance_shifted = NaN(size(traces,2), numShifts);
+explainedVariance = NaN(size(caTraces,2), 1);
+explainedVariance_shifted = NaN(size(caTraces,2), numShifts);
 
 lamValues = unique(lamStim);
 shifts = randi(size(zTraces,1), numShifts, 1);
-shiftedTraces = NaN(size(zTraces,1), numShifts, size(zTraces,2));
-for sh = 1:numShifts
-    shiftedTraces(:,sh,:) = circshift(zTraces, shifts(sh), 1);
-end
-for lam = 1:length(lamValues)
-    indNeurons = find((lamStim == lamValues(lam)) & valid);
-    if isempty(indNeurons)
-        continue
+
+% Make sure to keep size of shiftTraces to <1 bill. elements
+batches = ceil(size(zTraces,1) * numShifts * size(zTraces,2) / 1000000000);
+batchSize = ceil(size(zTraces,2) / batches);
+for b = 1:batches
+    indBatch = (1:batchSize) + (b-1)*batchSize;
+    indBatch(indBatch > size(zTraces,2)) = [];
+    shiftedTraces = NaN(size(zTraces,1), numShifts, length(indBatch));
+    for sh = 1:numShifts
+        shiftedTraces(:,sh,:) = circshift(zTraces(:,indBatch), shifts(sh), 1);
     end
-    lms = lamMatrix_stim .* lamValues(lam);
-    A = gpuArray([stim2; lms]);
-    
-    pred = stim2 * receptiveFields(:,indNeurons);
-    explainedVariance(indNeurons) = 1 - ...
-        sum((zTraces(:, indNeurons) - pred) .^ 2,1) ./ ...
-        sum((zTraces(:, indNeurons) - mean(zTraces(:, indNeurons),1)) .^ 2,1);
-    
-    for iCell = 1:length(indNeurons)
-        tr = shiftedTraces(:,:,indNeurons(iCell));
-        B = gather(A \ gpuArray(padarray(tr, size(lms,1), 'post'))); 
-        pred = stim2 * B;
-        explainedVariance_shifted(indNeurons(iCell), :) = 1 - ...
-            sum((tr - pred) .^ 2,1) ./ sum((tr - mean(tr,1)) .^ 2,1);
+    for lam = 1:length(lamValues)
+        indNeurons = find((lamStim(indBatch) == lamValues(lam)) & ...
+            validUnits(indBatch));
+        if isempty(indNeurons)
+            continue
+        end
+        lms = lamMatrix_stim .* lamValues(lam);
+        A = gpuArray([stim; lms]);
+
+        pred = stim * receptiveFields(:, indBatch(indNeurons));
+        explainedVariance(indBatch(indNeurons)) = 1 - ...
+            sum((zTraces(:, indBatch(indNeurons)) - pred) .^ 2,1) ./ ...
+            sum((zTraces(:, indBatch(indNeurons)) - ...
+            mean(zTraces(:, indBatch(indNeurons)),1)) .^ 2,1);
+
+        for iCell = 1:length(indNeurons)
+            tr = shiftedTraces(:,:,indNeurons(iCell));
+            B = gather(A \ gpuArray(padarray(tr, size(lms,1), 'post')));
+            pred = stim * B;
+            explainedVariance_shifted(indBatch(indNeurons(iCell)), :) = ...
+                1 - ...
+                sum((tr - pred) .^ 2,1) ./ sum((tr - mean(tr,1)) .^ 2,1);
+        end
     end
 end

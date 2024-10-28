@@ -2,8 +2,8 @@ function [stimMatrix, x, y, z] = ...
     getStimMatrix(times, xyPos, diameter, isWhite)
 
 % determine tested circle positions and sizes
-x = unique(xyPos(:,1));
-y = unique(xyPos(:,2));
+x = unique(xyPos(:,1)); % left to right
+y = flip(unique(xyPos(:,2))); % top to bottom
 z = unique(diameter);
 
 % check whether all combinations of positions and sizes were presented; if

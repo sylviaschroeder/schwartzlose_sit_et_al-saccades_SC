@@ -1,4 +1,4 @@
-function data = getCircleData(folder)
+function data = getCircleInfo(folder)
 
 t = readNPY(fullfile(folder, '_ss_circles.intervals.npy'));
 data.times = t(:,1);

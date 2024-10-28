@@ -2,14 +2,14 @@
 clear; 
 
 %% Folder definitions
-% % folders Sylvia (please comment out and add your own lines)
-% folder.data = 'C:\Users\Sylvia\University College London\Rossi, Federico - SC_Saccades_paper\Paper\SC_data';
-% % folder.data = 'C:\Users\Sylvia\OneDrive - University of Sussex\Lab\DATA\DataToPublish\arousal_NYP_matlab\sc neurons 2p';
-% folder.results = 'C:\Users\Sylvia\University College London\Rossi, Federico - SC_Saccades_paper\Paper\Results';
-% % folder.results = 'D:\Sacccade Paper\Results';
-% folder.plots = 'D:\Results\SacccadePaperPlots';
-% folder.codeToolboxes = 'C:\dev\toolboxes';
-% folder.codeThis = 'C:\dev\workspaces';
+% folders Sylvia (please comment out and add your own lines)
+folder.data = 'C:\Users\Sylvia\University College London\Rossi, Federico - SC_Saccades_paper\Paper\SC_data';
+% folder.data = 'C:\Users\Sylvia\OneDrive - University of Sussex\Lab\DATA\DataToPublish\arousal_NYP_matlab\sc neurons 2p';
+folder.results = 'C:\Users\Sylvia\University College London\Rossi, Federico - SC_Saccades_paper\Paper\Results';
+% folder.results = 'D:\Sacccade Paper\Results';
+folder.plots = 'D:\Results\SacccadePaperPlots';
+folder.codeToolboxes = 'C:\dev\toolboxes';
+folder.codeThis = 'C:\dev\workspaces';
 
 % % folders Federico Laptop
 % folder.data = '/Users/federico/Library/CloudStorage/OneDrive-UniversityCollegeLondon/SC_Saccades_paper/Paper/SC_data';
@@ -18,12 +18,12 @@ clear;
 % folder.codeToolboxes = '/Users/federico/Documents/GitHub';
 % folder.codeThis = '/Users/federico/Documents/GitHub';
 
-% folders Federico's WS
-folder.data = 'D:\OneDrive - University College London\SC_Saccades_paper\Paper\SC_data';
-folder.results = 'D:\OneDrive - University College London\SC_Saccades_paper\Paper\Results';
-folder.plots = 'D:\OneDrive - University College London\SC_Saccades_paper\Paper\Plots';
-folder.codeToolboxes = 'D:\OneDrive - Fondazione Istituto Italiano Tecnologia\Documents\Code';
-folder.codeThis = 'D:\OneDrive - Fondazione Istituto Italiano Tecnologia\Documents\Code';
+% % folders Federico's WS
+% folder.data = 'D:\OneDrive - University College London\SC_Saccades_paper\Paper\SC_data';
+% folder.results = 'D:\OneDrive - University College London\SC_Saccades_paper\Paper\Results';
+% folder.plots = 'D:\OneDrive - University College London\SC_Saccades_paper\Paper\Plots';
+% folder.codeToolboxes = 'D:\OneDrive - Fondazione Istituto Italiano Tecnologia\Documents\Code';
+% folder.codeThis = 'D:\OneDrive - Fondazione Istituto Italiano Tecnologia\Documents\Code';
 
 % %folders Heather
 % folder.data = 'C:\Users\User\OneDrive - Fondazione Istituto Italiano Tecnologia\Documenti\SC';
