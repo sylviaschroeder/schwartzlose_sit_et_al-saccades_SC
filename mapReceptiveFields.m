@@ -20,6 +20,10 @@ crossFolds = 10;
 minExplainedVariance = 0.01;
 maxPVal = 0.05;
 
+% thresholds for receptive fields used for eye shifts
+minEV_shift = 0.04;
+minPeakNoiseRatio_shift = 7.7;
+
 % fit Gaussian to RF
 thresh_diam = 0.75;
 thresh_subfield = 0.7;
@@ -311,6 +315,7 @@ for subj = 1:length(subjects)
         fPlots = fullfile(folder.plots, 'RFs', name, date);
         if ~isfolder(fPlots)
             mkdir(fPlots)
+            mkdir(fullfile(fPlots, 'doNotShift'))
         end
         if isfile(fullfile(f, "_ss_sparseNoise.times.npy"))
             results = io.getNoiseRFData(folderRes);
@@ -370,7 +375,14 @@ for subj = 1:length(subjects)
                     results.timestamps(mxTime), results.explVars(iUnit), ...
                     results.pValues(iUnit), results.peakToNoise(iUnit)))
 
-                saveas(gcf, fullfile(fPlots, sprintf('Unit%03d_noise.jpg', iUnit)));
+                if results.explVars(iUnit) > minEV_shift && ...
+                        results.peakToNoise(iUnit) > minPeakNoiseRatio_shift
+                    saveas(gcf, fullfile(fPlots, ...
+                        sprintf('Unit%03d_noise.jpg', iUnit)));
+                else
+                    saveas(gcf, fullfile(fPlots, 'doNotShift', ...
+                        sprintf('Unit%03d_noise.jpg', iUnit)));
+                end
                 close gcf
             end
         end
@@ -447,7 +459,14 @@ for subj = 1:length(subjects)
                     results.pValues(iUnit), results.peakToNoise(iUnit), ...
                     sprintf(' %.1f',diams(gd))))
 
-                saveas(gcf, fullfile(fPlots, sprintf('Unit%03d_circle.jpg', iUnit)));
+                if results.explVars(iUnit) > minEV_shift && ...
+                        results.peakToNoise(iUnit) > minPeakNoiseRatio_shift
+                    saveas(gcf, fullfile(fPlots, ...
+                        sprintf('Unit%03d_circle.jpg', iUnit)));
+                else
+                    saveas(gcf, fullfile(fPlots, 'doNotShift', ...
+                        sprintf('Unit%03d_circle.jpg', iUnit)));
+                end
                 close gcf
             end
         end

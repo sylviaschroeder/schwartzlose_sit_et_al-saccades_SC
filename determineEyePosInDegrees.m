@@ -2,16 +2,16 @@ function determineEyePosInDegrees(folder)
 
 %% Parameters
 % thresholds for all receptive fields
-minEV_shift = 0.01; % increase to 0.05 for shifts?
+minEV = 0.01;
 maxPVal = 0.05;
 % thresholds for receptive fields used for eye shifts
+minEV_shift = 0.04;
 minPeakNoiseRatio_shift = 7.7;
 % thresholds for rest of receptive fields (only determine median position)
-minPeakNoiseRatio_median = 5;
+minPeakNoiseRatio_median = 4;
 
 % for binning of horizontal eye position
-numEyeBinsNoise = 9;
-numEyeBinsCircles = 5;
+numEyeBins = 5;
 
 % for correcting baseline drifts of calcium traces at start of experiments
 driftWin = 20; % in s, window to test whether baseline is higher than normal
@@ -69,7 +69,7 @@ for subj = 1:length(subjects)
             edges = [rfData.x(1)-0.5*gridW rfData.x(end)+0.5*gridW ...
                 rfData.y(1)+0.5*gridH rfData.y(end)-0.5*gridH];
 
-            nb = numEyeBinsCircles;
+            nb = numEyeBins;
         elseif isfile(fullfile(f, "_ss_rf.pValues.npy"))
             stimData = io.getVisNoiseInfo(f);
             rfData = io.getNoiseRFData(folderRes);
@@ -83,7 +83,7 @@ for subj = 1:length(subjects)
                 stimData.frames = stimData.frames(:,:,validPix);
             end
 
-            nb = numEyeBinsNoise;
+            nb = numEyeBins;
         else
             continue
         end
@@ -108,7 +108,7 @@ for subj = 1:length(subjects)
             whiteNoise.makeStimToeplitz(stimMatrix, t_stim, rfBins);
 
         %% Prepare calcium traces
-        validRF = find(rfData.explVars > minEV_shift & ...
+        validRF = find(rfData.explVars > minEV & ...
             rfData.pValues < maxPVal);
         % interpolate calcium traces to align all to same time
         t_ind = caData.time > t_stim(1) - 10 & caData.time < t_stim(end) + 10;
@@ -149,34 +149,36 @@ for subj = 1:length(subjects)
             eyePosPerBin(b) = median(eyePos(bin == b), "omitnan");
         end
 
-        % RFs_shift: [units x rows x columns (x diameters) x delays x
-        % subfields x shifts]
-        RFs_shift = NaN([length(validForShift) stimSize length(t_rf) 2 0]);
-        numDim = length(stimSize) + 3;
-        for p = 1:nb
-            % ignore all time points for which eye position was not in bin p
-            ignore = bin ~= p;
-            rfs = whiteNoise.getReceptiveField(caTraces(:,indValidShift), t_ca, ...
-                toeplitz, t_toeplitz, stimSize, rfBins, ...
-                lambdasStim, crossFolds, ignore);
-            RFs_shift = cat(numDim+1, RFs_shift, permute(rfs, [numDim 1:numDim-1]));
-        end
-        if isfield(stimData, "diameter")
-            % continue with average across good circle sizes
-            for iUnit = 1:size(RFs_shift,1)
-                cellID = validForShift(iUnit);
-                gd = rfData.sizeTuning(cellID,:);
-                [~,md] = max(abs(gd));
-                sgn = sign(gd(md));
-                gd = (gd .* sgn) ./ max(gd.*sgn) > thresh_diam;
-                RFs_shift(iUnit,:,:,1,:,:,:) = ...
-                    mean(RFs_shift(iUnit,:,:,gd,:,:,:),4,"omitnan");
+        if ~isempty(validForShift)
+            % RFs_shift: [units x rows x columns (x diameters) x delays x
+            % subfields x shifts]
+            RFs_shift = NaN([length(validForShift) stimSize length(t_rf) 2 0]);
+            numDim = length(stimSize) + 3;
+            for p = 1:nb
+                % ignore all time points for which eye position was not in bin p
+                ignore = bin ~= p;
+                rfs = whiteNoise.getReceptiveField(caTraces(:,indValidShift), t_ca, ...
+                    toeplitz, t_toeplitz, stimSize, rfBins, ...
+                    lambdasStim, crossFolds, ignore);
+                RFs_shift = cat(numDim+1, RFs_shift, permute(rfs, [numDim 1:numDim-1]));
             end
-            RFs_shift = permute(RFs_shift(:,:,:,1,:,:,:),[1 2 3 5 6 7 4]);
+            if isfield(stimData, "diameter")
+                % continue with average across good circle sizes
+                for iUnit = 1:size(RFs_shift,1)
+                    cellID = validForShift(iUnit);
+                    gd = rfData.sizeTuning(cellID,:);
+                    [~,md] = max(abs(gd));
+                    sgn = sign(gd(md));
+                    gd = (gd .* sgn) ./ max(gd.*sgn) > thresh_diam;
+                    RFs_shift(iUnit,:,:,1,:,:,:) = ...
+                        mean(RFs_shift(iUnit,:,:,gd,:,:,:),4,"omitnan");
+                end
+                RFs_shift = permute(RFs_shift(:,:,:,1,:,:,:),[1 2 3 5 6 7 4]);
+            end
+            % invert polarity of OFF field so that positive values mean: unit
+            % is driven by black square/circle
+            RFs_shift(:,:,:,:,2,:) = -RFs_shift(:,:,:,:,2,:);
         end
-        % invert polarity of OFF field so that positive values mean: unit 
-        % is driven by black square/circle
-        RFs_shift(:,:,:,:,2,:) = -RFs_shift(:,:,:,:,2,:);
 
         %% Map median position RFs
         % find neurons where RF was not good enough to do shifts
@@ -298,9 +300,12 @@ for subj = 1:length(subjects)
             noise = std(rf_visDeg - rf_gauss, 0, "all");
             peakNoiseRatio(cellID) = fitPars(1) / noise;
 
-            % collect fitted parameters
-            rfGaussConst(cellID,:) = fitPars([1 3:6]);
-            medianRFpositions(cellID,:) = fitPars(2);
+            % collect fitted parameters, only if peak-to-noise ratio is
+            % high enough
+            if peakNoiseRatio(cellID) > minPeakNoiseRatio_median
+                rfGaussConst(cellID,:) = fitPars([1 3:6]);
+                medianRFpositions(cellID) = fitPars(2);
+            end
         end
 
         %% Linear regression
@@ -313,83 +318,77 @@ for subj = 1:length(subjects)
         shifts(shifts+minSTD < edges(1) | shifts-minSTD > edges(2)) = NaN;
         % determine median position of RF by taking median across 3 centre
         % positions of eye
-        centrePos = [-1 0 1] + ceil(nb/2);
-        centrePosValid = find(all(~isnan(shifts(:,centrePos)), 2));
-        medianRFpositions(centrePosValid) = ...
-            median(shifts(centrePosValid,centrePos), 2);
+        centrePosInd = [-1 0 1] + ceil(nb/2);
+        centrePosValid = find(all(~isnan(shifts(:,centrePosInd)), 2));
+        centrePos = median(shifts(centrePosValid,centrePosInd), 2);            
 
-        if ~isempty(centrePosValid)
+        if length(centrePosValid) >= 5 % at least 5 units with good RFs with centre eye positions
             % fit: rf_xPos_norm = a + b * eye_xPos
             % normalize shifted RF positions by each unit's median RF
             % position
-            posNorm = shifts(centrePosValid,:) - ...
-                medianRFpositions(centrePosValid);
+            posNorm = shifts(centrePosValid,:) - centrePos;
             mdl = fitlm(reshape(repmat(eyePosPerBin, ...
                 length(centrePosValid), 1), [], 1), ...
                 reshape(posNorm, [], 1), "RobustOpts", "on");
             coeffs = mdl.Coefficients.Estimate;
-
-            % if some shifted RF positions were outside stimulus, use
-            % linear model to estimate median RF position based on shifted RF
-            % positions inside stimulus:
-            % rf_xPos - rf_medianXPos = a + b * eye_xPos
-            % => rf_medianXPos = rf_xPos - (a + b * eye_xPos)
-            someShiftsValid = setdiff(validForShift, centrePosValid);
-            if ~isempty(someShiftsValid)
-                invalid = [];
-                for cellID = someShiftsValid'
-                    x = shifts(cellID,:);
-                    ind = ~isnan(x);
-                    if all(ind(centrePos))
-                        indMed = centrePos;
-                    elseif ind(centrePos(2))
-                        indMed = centrePos(2);
-                    elseif all(ind(centrePos([1 3])))
-                        indMed = centrePos([1 3]);
-                    else
-                        invalid = [invalid; cellID];
-                        continue
-                    end
-                    medianRFpositions(cellID) = ...
-                        median(x(indMed)' - predict(mdl, eyePosPerBin(indMed)'));
-                end
-                someShiftsValid = setdiff(someShiftsValid, invalid);
-            end
         else
             coeffs = [NaN NaN];
-            someShiftsValid = [];
+        end
+
+        %% Estimate RF position at median eye position for all shifted RFs
+        if ~all(isnan(coeffs))
+            % use linear model to estimate median RF position based on 
+            % shifted RF positions:
+            % rf_xPos - rf_medianXPos = a + b * eye_xPos
+            % => rf_medianXPos = rf_xPos - (a + b * eye_xPos)
+            % only consider units with at least 3 valid shifted RFs (inside
+            % stimulus edges)
+            indModelled = intersect(validForShift, ...
+                find(sum(~isnan(shifts),2) > 2));
+            medianRFpositions(indModelled) = mean(shifts(indModelled,:) - ...
+                (coeffs(1) + coeffs(2).*eyePosPerBin), 2, "omitnan");
+        else
+            indModelled = [];
         end
 
         %% Save results
-
-        % save RF fits
-        rfMapsShifted = NaN([size(rfData.maps,1), size(RFs_shift,2:6)]);
-        rfMapsShifted(validForShift,:,:,:,:,:) = RFs_shift;
-        writeNPY(rfMapsShifted, fullfile(folderRes, 'rfPerEyePos.maps.npy'))
+        % save shifted RF fits
+        if ~isempty(validForShift)
+            rfMapsShifted = NaN([size(rfData.maps,1), size(RFs_shift,2:6)]);
+            rfMapsShifted(validForShift,:,:,:,:,:) = RFs_shift;
+            writeNPY(rfMapsShifted, fullfile(folderRes, ...
+                'rfPerEyePos.maps.npy'))
+            writeNPY(rfGaussShift, fullfile(folderRes, ...
+                'rfPerEyePos.gaussFitPars_xShifts.npy'))
+        end
+        if ~all(isnan(coeffs))
+            % save linear regression fit
+            writeNPY(coeffs, fullfile(folderRes, ...
+                'eyeToRFPos.regressionCoeffs.npy'))
+        end
+        % save other RF fits (at median eye position)
         rfMaps = NaN([size(rfData.maps,1), size(RFs_median,2:5)]);
         rfMaps(validNoShift,:,:,:,:,:) = RFs_median;
-        writeNPY(rfMaps, fullfile(folderRes, 'rfPerEyePos.maps_medianEyePos.npy'))
-        writeNPY(rfGaussConst, fullfile(folderRes, 'rfPerEyePos.gaussFitPars_fixed.npy'))
-        writeNPY(rfGaussShift, fullfile(folderRes, 'rfPerEyePos.gaussFitPars_xShifts.npy'))
-        writeNPY(peakNoiseRatio, fullfile(folderRes, 'rfPerEyePos.peakToNoiseRatio_medianEyePos.npy'))
+        writeNPY(rfMaps, fullfile(folderRes, ...
+            'rfPerEyePos.maps_medianEyePos.npy'))
+        writeNPY(peakNoiseRatio, fullfile(folderRes, ...
+            'rfPerEyePos.peakToNoiseRatio_medianEyePos.npy'))
+        writeNPY(rfGaussConst, fullfile(folderRes, ...
+            'rfPerEyePos.gaussFitPars_fixed.npy'))
 
         % save median horizontal RF positions
-        writeNPY(medianRFpositions, fullfile(folderRes, 'rfPerEyePos.medianHorizRFPosition.npy'))
-        isMeasured = false(length(caData.ids),1);
-        isMeasured(centrePosValid) = true;
-        writeNPY(isMeasured, fullfile(folderRes, 'rfPerEyePos.isRFMedian_shift.npy'))
+        writeNPY(medianRFpositions, fullfile(folderRes, ...
+            'rfPerEyePos.medianHorizRFPosition.npy'))
         isModelled = false(length(caData.ids),1);
-        isModelled(someShiftsValid) = true;
-        writeNPY(isModelled, fullfile(folderRes, 'rfPerEyePos.isRFMedian_modelled.npy'))
-        isAcrossAllPupilPos = false(length(caData.ids),1);
-        isAcrossAllPupilPos(validNoShift) = true;
-        writeNPY(isAcrossAllPupilPos, fullfile(folderRes, 'rfPerEyePos.isRFMedian_medianEyePos.npy'))
+        isModelled(indModelled) = true;
+        writeNPY(isModelled, fullfile(folderRes, ...
+            'rfPerEyePos.isRFMedian_modelled.npy'))
+        writeNPY(peakNoiseRatio > minPeakNoiseRatio_median, ...
+            fullfile(folderRes, 'rfPerEyePos.isRFMedian_medianEyePos.npy'))
 
         % save median eye positions
-        writeNPY(eyePosPerBin, fullfile(folderRes, 'eyeToRFPos.eyeHorizPositions.npy'))
-
-        % save linear regression fit
-        writeNPY(coeffs, fullfile(folderRes, 'eyeToRFPos.regressionCoeffs.npy'))
+        writeNPY(eyePosPerBin, fullfile(folderRes, ...
+            'eyeToRFPos.eyeHorizPositions.npy'))
         
         %% Make plots
         % plot RF maps and fitted ellipse for each neuron with shift
@@ -433,6 +432,12 @@ for subj = 1:length(subjects)
                         x_rot(n) = NaN;
                         y_rot(n) = NaN;
                         plot(x_rot, y_rot, 'k')
+                        if pos == floor(nb/2) + 1 %median eye position
+                            plot(medianRFpositions(cellID), ...
+                                rfGaussConst(cellID,3), 'o', ...
+                                'MarkerFaceColor', 'k', ...
+                                'MarkerEdgeColor', 'none')
+                        end
                         axis image off
                         if sub == 1
                             if pos == 1
@@ -450,18 +455,20 @@ for subj = 1:length(subjects)
                     colorbar
                 end
                 if isfield(stimData, "diameter")
-                    sgtitle(sprintf('Neuron %d: %s (w/o shift: EV: %.3f, peak/noise: %.1f, diameters:%s)', ...
+                    sgtitle(sprintf(['Neuron %d: %s (w/o shift: EV: ' ...
+                        '%.3f, peak/noise: %.1f, diameters:%s)'], ...
                         cellID, ...
                         RFtypes{mxSub}, rfData.explVars(cellID), ...
                         rfData.peakToNoise(cellID), ...
                         sprintf(' %.1f',diameters(gd))),'FontWeight', 'bold')
                 else
-                    sgtitle(sprintf('Neuron %d: %s (w/o shift: EV: %.3f, peak/noise: %.1f)', ...
+                    sgtitle(sprintf(['Neuron %d: %s (w/o shift: EV: ' ...
+                        '%.3f, peak/noise: %.1f)'], ...
                         cellID, ...
                         RFtypes{mxSub}, rfData.explVars(cellID), ...
                         rfData.peakToNoise(cellID)), 'FontWeight', 'bold')
                 end
-            else
+            elseif peakNoiseRatio(cellID) > minPeakNoiseRatio_median
                 ind = validNoShift == cellID;
                 rf = squeeze(RFs_median(ind,:,:,mxTime,:));
                 mx = max(abs(rf(:)));
@@ -490,6 +497,9 @@ for subj = 1:length(subjects)
                     x_rot(n) = NaN;
                     y_rot(n) = NaN;
                     plot(x_rot, y_rot, 'k')
+                    plot(medianRFpositions(cellID), ...
+                        rfGaussConst(cellID,3), 'o', 'MarkerFaceColor', ...
+                        'k', 'MarkerEdgeColor', 'none')
                     axis image off
                     if sub == 2
                         axis on
@@ -500,17 +510,21 @@ for subj = 1:length(subjects)
                     colorbar
                 end
                 if isfield(stimData, "diameter")
-                    sgtitle(sprintf('Neuron %d: %s (EV (all eye pos): %.3f, peak/noise: %.1f, diameters:%s)', ...
+                    sgtitle(sprintf(['Neuron %d: %s (EV (all eye pos): ' ...
+                        '%.3f, peak/noise: %.1f, diameters:%s)'], ...
                         cellID, ...
                         RFtypes{mxSub}, rfData.explVars(cellID), ...
                         peakNoiseRatio(cellID), ...
                         sprintf(' %.1f',diameters(gd))),'FontWeight', 'bold')
                 else
-                    sgtitle(sprintf('Neuron %d: %s (EV (all eye pos): %.3f, peak/noise: %.1f)', ...
+                    sgtitle(sprintf(['Neuron %d: %s (EV (all eye pos): ' ...
+                        '%.3f, peak/noise: %.1f)'], ...
                         cellID, ...
                         RFtypes{mxSub}, rfData.explVars(cellID), ...
                         peakNoiseRatio(cellID)), 'FontWeight', 'bold')
                 end
+            else
+                continue
             end
             saveas(gcf, fullfile(folderPl, sprintf('Neuron%03d.jpg', cellID)))
             close gcf
@@ -532,7 +546,8 @@ for subj = 1:length(subjects)
 
         if ~isempty(centrePosValid)
             nexttile
-            s = [posNorm; shifts(someShiftsValid,:)-medianRFpositions(someShiftsValid)];
+            s = [posNorm; shifts(indModelled,:) - ...
+                medianRFpositions(indModelled)];
             plot(eyePosPerBin, s', 'Color', [1 1 1] .* 0.5)
             hold on
             plot(eyePosPerBin, median(s, 1, 'omitnan'), 'k', 'LineWidth', 2)
