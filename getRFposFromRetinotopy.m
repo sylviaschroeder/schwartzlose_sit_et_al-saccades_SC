@@ -6,7 +6,9 @@ if ~isfolder(folderPl)
     mkdir(folderPl)
 end
 
-subjects = dir(fullfile(folder.data, 'SS*'));
+subjects = dir(fullfile(folder.data));
+subjects = subjects(~startsWith({subjects.name},'.'));
+
 for subj = 1:length(subjects)
     name = subjects(subj).name;
     dates = dir(fullfile(folder.data, name, '2*'));
@@ -15,21 +17,36 @@ for subj = 1:length(subjects)
         f = fullfile(folder.data, name, date, '001');
         fRes = fullfile(folder.results, name, date);
 
-        if ~isfile(fullfile(f, '_ss_sparseNoise.times.npy'))
+        if ~isfile(fullfile(f, '_ss_sparseNoise.times.npy')) && ...
+                ~isfile(fullfile(f, "_ss_circles.intervals.npy"))
             continue
         end
 
         % load data
         brainPos = readNPY(fullfile(f, '_ss_2pRois.xyz.npy'));
         brainPos(:,3) = [];
-        edges = readNPY(fullfile(f, '_ss_rfDescr.edges.npy'));
-        edges(2) = min([edges(2) 0]);
+        if isfile(fullfile(fRes, "_ss_circlesRf.pValues.npy"))
+            rfData = io.getCircleRFData(fRes);
+            gridW = median(diff(rfData.x));
+            gridH = median(-diff(rfData.y));
+            % edges: [left right top bottom] (above horizon: >0)
+            edges = [rfData.x(1)-0.5*gridW rfData.x(end)+0.5*gridW ...
+                rfData.y(1)+0.5*gridH rfData.y(end)-0.5*gridH];
+            paradigm = 'circles';
+        elseif isfile(fullfile(fRes, "_ss_rf.pValues.npy"))
+            rfData = io.getNoiseRFData(fRes);
+            % edges: [left right top bottom] (above horizon: >0)
+            edges = rfData.edges;
+            paradigm = 'visual noise';
+        else
+            continue
+        end
+
         data = io.getRFFits(fRes);
         rf_x = data.rfPosX;
         rf_y = data.rfGaussPars(:,3);
         isMeasured = data.isMeasured;
         isModelled = data.isModelled;
-        isAll = data.isAcrossAllPupilPos;
         
         % for all units with a significant RF, use linear regression to
         % model:
@@ -60,12 +77,8 @@ for subj = 1:length(subjects)
         predict_rf_y = fit_rf_y(brainPos);
 
         %% Save results
-        folderRes = fullfile(folder.results, name, date);
-        if ~isfolder(folderRes)
-            mkdir(folderRes);
-        end
         writeNPY([predict_rf_x, predict_rf_y], ...
-            fullfile(folderRes, 'rfRetinotopy.pos.npy'))
+            fullfile(fRes, 'rfRetinotopy.pos.npy'))
 
         %% Make plots
         % figure('Position', [150 120 1640 770])
@@ -73,56 +86,45 @@ for subj = 1:length(subjects)
         tiledlayout(1,2)
 
         nexttile
-        h = zeros(1,4);
-        plot([rf_x(valid | isAll)'; predict_rf_x(valid | isAll)'], ...
-            [rf_y(valid | isAll)'; predict_rf_y(valid | isAll)'], 'k')
+        h = zeros(1,2);
+        plot([rf_x(valid)'; predict_rf_x(valid)'], ...
+            [rf_y(valid)'; predict_rf_y(valid)'], 'k')
         hold on
-        h(1) = plot(rf_x(isAll), ...
-            rf_y(isAll), ...
-            'pentagram', 'MarkerEdgeColor', 'none', ...
-            'MarkerFaceColor', [1 0.5 0.5], 'MarkerSize', 10);
-        h(2) = plot(predict_rf_x(isAll), ...
-            predict_rf_y(isAll), ...
-            'o', 'MarkerEdgeColor', 'none', ...
-            'MarkerFaceColor', [0.5 0.5 0.5]);
-        h(3) = plot(rf_x(isMeasured | isModelled), ...
-            rf_y(isMeasured | isModelled), ...
+        h(1) = plot(rf_x(valid), rf_y(valid), ...
             'pentagram', 'MarkerEdgeColor', 'none', ...
             'MarkerFaceColor', 'r', 'MarkerSize', 10);
-        h(4) = plot(predict_rf_x(isMeasured | isModelled), ...
-            predict_rf_y(isMeasured | isModelled), ...
+        h(2) = plot(predict_rf_x(valid), predict_rf_y(valid), ...
             'o', 'MarkerEdgeColor', 'none', ...
             'MarkerFaceColor', 'k');
         axis image
-        set(gca, 'YDir', 'reverse', 'box', 'off')
-        axis(edges)
-        legend(h, 'Measured: bad RF', 'Fitted: bad RF', ...
-            'Measured: good RF', 'Fitted: good RF')
-        title('Measured vs fitted RF positions (only good RFs used for fit)')
+        set(gca, 'YDir', 'normal', 'box', 'off')
+        axis(edges([1 2 4 3]) + [-8.5 0 0 8.5])
+        legend(h, 'Measured RF', 'Retinotopic RF')
+        title('Measured vs retinotopic RF positions')
 
         nexttile
         hold on
         h = [0 0];
-        ind = isMeasured | isModelled | isAll;
-        h(1) = plot(predict_rf_x(~ind), predict_rf_y(~ind), ...
+        h(1) = plot(predict_rf_x(~valid), predict_rf_y(~valid), ...
             'o', 'MarkerEdgeColor', 'none', 'MarkerFaceColor', [1 1 1].*0.75);
-        h(2) = plot(predict_rf_x(ind), predict_rf_y(ind), ...
+        h(2) = plot(predict_rf_x(valid), predict_rf_y(valid), ...
             'o', 'MarkerEdgeColor', 'none', 'MarkerFaceColor', [1 1 1].*0.25);
         axis image
-        set(gca, 'YDir', 'reverse', 'box', 'off')
+        set(gca, 'YDir', 'normal', 'box', 'off')
         legend(h, 'Unit without RF', 'Unit with RF')
         title('Fitted RF positions of all units')
         limits = [min(predict_rf_x) max(predict_rf_x) ...
             min(predict_rf_y) max(predict_rf_y)];
-        limits([1 3]) = min([limits([1 3]); edges([1 3])], [], 1);
-        limits([2 4]) = max([limits([2 4]); edges([2 4])], [], 1);
+        limits([1 3]) = min([limits([1 3]); edges([1 4])], [], 1);
+        limits([2 4]) = max([limits([2 4]); edges([2 3])], [], 1);
         axis(limits)
-        if ~all(limits == edges)
+        if ~all(limits == edges([1 2 4 3]))
             h(3) = plot(edges([1 1 2 2 1]), edges([3 4 4 3 3]), 'k:');
             legend(h, 'Unit without RF', 'Unit with RF', 'Monitor edge')
         end
 
-        sgtitle(sprintf('%s %s', name, date), 'FontWeight', 'bold')
+        sgtitle(sprintf('%s %s (%s)', name, date, paradigm), ...
+            'FontWeight', 'bold')
         saveas(gcf, fullfile(folderPl, sprintf('%s_%s.jpg', ...
             name, date)))
         close gcf
