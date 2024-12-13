@@ -1,14 +1,13 @@
 function [newTraces, newTime] = alignSampling(traces, time, delayIDs, ...
     delays)
 
-timeBin = median(diff(time));
-
 if length(delays) <= 1
     newTraces = traces;
     newTime = time;
     return
 end
 
+timeBin = median(diff(time));
 delta_t = median(diff(delays));
 upsample = round(timeBin / delta_t);
 timeBin = timeBin / upsample;

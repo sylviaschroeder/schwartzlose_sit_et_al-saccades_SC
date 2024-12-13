@@ -17,12 +17,12 @@ rf_timeLimits = [0.2 0.4];
 crossFolds = 10;
 
 % for evaluation of receptive fields (significance/goodness)
-minExplainedVariance = 0.01;
+minEV = 0.01;
 maxPVal = 0.05;
 
 % thresholds for receptive fields used for eye shifts
 minEV_shift = 0.04;
-minPeakNoiseRatio_shift = 7.7;
+minPeak_shift = 7.7;
 
 % fit Gaussian to RF
 thresh_diam = 0.75;
@@ -74,7 +74,6 @@ for subj = 1:length(subjects)
                 % edges: [left right top bottom] (above horizon: >0)
                 edges = double([stimData.edges([1 2]), -stimData.edges([3 4])]);
                 gridW = diff(edges(1:2)) / size(stimData.frames,3);
-                gridH = -diff(edges(3:4)) / size(stimData.frames,2);
                 % ignore pixels in ipsilateral (right) hemifield
                 if edges(1) * edges(2) < 0
                     % determine right edge of all pixel columns
@@ -107,13 +106,9 @@ for subj = 1:length(subjects)
 
             t_stim = stimData.times;
             tBin_stim = median(diff(t_stim));
-            t_rf = (floor(rf_timeLimits(1) / tBin_stim) : ...
-                ceil(rf_timeLimits(2) / tBin_stim)) .* tBin_stim;
-            rfBins = t_rf/tBin_stim;
-
-            % generate toeplitz matrix for stimulus
-            [toeplitz, t_toeplitz] = ...
-                whiteNoise.makeStimToeplitz(stimMatrix, t_stim, rfBins);
+            rfBins = (floor(rf_timeLimits(1) / tBin_stim) : ...
+                ceil(rf_timeLimits(2) / tBin_stim));
+            t_rf = rfBins .* tBin_stim;
 
             %% Prepare calcium traces
             % interpolate calcium traces to align all to same time
@@ -133,6 +128,9 @@ for subj = 1:length(subjects)
             caTraces = traces.highPassFilter(caTraces, t_ca, smoothWin);
 
             %% Map RFs
+            % generate toeplitz matrix for stimulus
+            [toeplitz, t_toeplitz] = ...
+                whiteNoise.makeStimToeplitz(stimMatrix, t_stim, rfBins);
             % rFields: [rows x columns (x diameters) x t_rf x ON/OFF x units]
             [rFields, ev] = ...
                 whiteNoise.getReceptiveField(caTraces, t_ca, ...
@@ -184,7 +182,7 @@ for subj = 1:length(subjects)
 
             % fit Gaussian to RF
             % find neurons with good enough RFs to do fit Gaussian
-            validRF = find(pvals < maxPVal & maxEV > minExplainedVariance);
+            validRF = find(pvals < maxPVal & maxEV > minEV);
             % rfGaussPars: [amplitude, xSTD, yCentre, ySTD, rotation]
             rfGaussPars = NaN(length(maxEV), 6);
             peakNoiseRatio = NaN(length(maxEV), 1);
@@ -265,18 +263,17 @@ for subj = 1:length(subjects)
                 % interpolate RF so that pixels are square with edge length
                 % of 1 visual degree
                 % note: xx and yy are locations of rf_visDeg relative to
-                % pixel locations of rf (i.e. 1 is at the centre of the 1st
-                % pixel of rf)
-                [rf_visDeg,xx,yy] = whiteNoise.interpolateRFtoVisualDegrees(...
-                    rf, edges);
+                % visual field
+                [rf_visDeg, xx, yy] = ...
+                    whiteNoise.interpolateRFtoVisualDegrees(rf, edges);
 
                 % fit 2D Gausian and shift horzontal position of RFs across
                 % eye positions
-                [fitPars, rf_gauss] = whiteNoise.fit2dGaussRF(rf_visDeg, false);
-                % transform RF position to absolute values (relative to
-                % visual field)
-                fitPars(2) = edges(1) + xx(1)*gridW + fitPars(2)-1;
-                fitPars(4) = edges(3) - yy(1)*gridH - (fitPars(4)-1);
+                [fitPars, rf_gauss] = whiteNoise.fit2dGaussRF(...
+                    rf_visDeg, false, xx, yy);
+                % mirror RF orientation to account for flipped y-axis direction
+                % (top is positive)
+                fitPars(6) = -fitPars(6);
 
                 % get peak-to-noise ratio
                 noise = std(rf_visDeg - rf_gauss, 0, "all");
@@ -321,7 +318,7 @@ for subj = 1:length(subjects)
             results = io.getNoiseRFData(folderRes);
             for iUnit = 1:length(results.explVars)
                 if isnan(results.explVars(iUnit)) || ...
-                        results.explVars(iUnit) <= minExplainedVariance || ...
+                        results.explVars(iUnit) <= minEV || ...
                         results.pValues(iUnit) >= maxPVal
                     continue
                 end
@@ -376,7 +373,7 @@ for subj = 1:length(subjects)
                     results.pValues(iUnit), results.peakToNoise(iUnit)))
 
                 if results.explVars(iUnit) > minEV_shift && ...
-                        results.peakToNoise(iUnit) > minPeakNoiseRatio_shift
+                        results.peakToNoise(iUnit) > minPeak_shift
                     saveas(gcf, fullfile(fPlots, ...
                         sprintf('Unit%03d_noise.jpg', iUnit)));
                 else
@@ -390,7 +387,7 @@ for subj = 1:length(subjects)
             results = io.getCircleRFData(folderRes);
             for iUnit = 1:length(results.explVars)
                 if isnan(results.explVars(iUnit)) || ...
-                        results.explVars(iUnit) <= minExplainedVariance || ...
+                        results.explVars(iUnit) <= minEV || ...
                         results.pValues(iUnit) >= maxPVal
                     continue
                 end
@@ -460,7 +457,7 @@ for subj = 1:length(subjects)
                     sprintf(' %.1f',diams(gd))))
 
                 if results.explVars(iUnit) > minEV_shift && ...
-                        results.peakToNoise(iUnit) > minPeakNoiseRatio_shift
+                        results.peakToNoise(iUnit) > minPeak_shift
                     saveas(gcf, fullfile(fPlots, ...
                         sprintf('Unit%03d_circle.jpg', iUnit)));
                 else

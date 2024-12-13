@@ -59,7 +59,7 @@ stim = (stim - mean(stim(:),'omitnan')) ./ std(stim(:),'omitnan');
 
 % scale lambdas according to number of samples and number of predictors
 lamStim = sqrt(lambdas .* sum(validTimes) .* size(stim,2));
-% construct spatial smoothing lambda matrix
+% construct spatiotemporal smoothing lambda matrix
 lamMatrix_stim = krnl.makeLambdaMatrix([stimSize, length(rfBins)], ...
     ones(1,length(stimSize)+1));
 lamMatrix_stim = blkdiag(lamMatrix_stim, lamMatrix_stim);
