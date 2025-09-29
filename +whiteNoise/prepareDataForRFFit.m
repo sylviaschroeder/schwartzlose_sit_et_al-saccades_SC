@@ -21,10 +21,12 @@ validTimes = ~all(isnan(zTraces),2);
 toeplitz(~validTimes,:) = [];
 zTraces(~validTimes,:) = [];
 ignoreStimTimes(~validTimes) = [];
+% if NaN values < 10% in a neuron, exchange NaNs for 0
 ind = any(isnan(zTraces),1) & sum(isnan(zTraces),1)/size(zTraces,1) <= 0.1;
 if sum(ind) > 0
     zTraces(:,ind) = fillmissing(zTraces(:,ind),'constant',0);
 end
+% skip neurons that have only NaN values
 validUnits = ~any(isnan(zTraces),1)';
 
 if any(ignoreStimTimes)

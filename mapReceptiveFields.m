@@ -322,11 +322,11 @@ for subj = 1:length(subjects)
                         results.pValues(iUnit) >= maxPVal
                     continue
                 end
-                % rf: [rows x columns x time x ON/OFF];
-                rf = squeeze(results.maps(iUnit,:,:,:,:));
-                rf(:,:,:,2) = -rf(:,:,:,2);
                 mxTime = results.optimalDelays(iUnit);
-                mx = max(max(abs(rf(:,:,mxTime,:)),[],"all"));
+                % rf: [rows x columns x ON/OFF];
+                rf = squeeze(results.maps(iUnit,:,:,mxTime,:));
+                rf(:,:,:,2) = -rf(:,:,:,2);
+                mx = max(abs(rf),[],"all");
                 edges = results.edges; % [left, right, top, bottom]
                 gridW = diff(edges(1:2)) / size(rf,1);
                 gridH = -diff(edges(3:4)) / size(rf,2);
@@ -392,13 +392,9 @@ for subj = 1:length(subjects)
                     continue
                 end
                 mxTime = results.optimalDelays(iUnit);
-                % rf: [rows x columns x diameters x time x ON/OFF];
+                % rf: [rows x columns x diameters x ON/OFF];
                 rf = squeeze(results.maps(iUnit,:,:,:,mxTime,:));
                 rf(:,:,:,2) = -rf(:,:,:,2);
-                % determine best delay; average across diameters
-                % r = mean(rf,3,"omitnan");
-                % [~,mxTime] = max(max(abs(r),[],[1 2 3 5]));
-                % rf = squeeze(rf(:,:,:,mxTime,:));
                 mx = max(abs(rf),[],"all");
                 diams = results.diameters;
                 gridW = median(diff(results.x));
